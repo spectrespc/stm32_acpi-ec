@@ -1,0 +1,17 @@
+/* common/version.h.in
+ *
+ * Шаблон версии прошивки. Значения подставляет CMake:
+ *   FW_VERSION_HEX    - упакованная версия (major<<16 | minor<<8 | patch)
+ *   FW_VERSION_STRING - строка вида "1.0.0"
+ *
+ * Кодирование 0x00010000 совпадает с историческим значением
+ * FW_VERSION по умолчанию (формат GET_INFO не меняется).
+ */
+
+#ifndef COMMON_VERSION_H
+#define COMMON_VERSION_H
+
+#define FW_VERSION        0x@FW_VERSION_HEX@
+#define FW_VERSION_STRING "@FW_VERSION_STRING@"
+
+#endif /* COMMON_VERSION_H */

@@ -1,0 +1,21 @@
+# Артефакты сборки CMake
+build*/
+
+# Файлы, собираемые компилятором
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+*.map
+
+# Хостовые утилиты (собираются из исходников)
+tools/bootloader_tool/bootloader_tool
+
+# Редакторы и ОС
+.vscode/
+.swp
+*~
+
+# Сгенерированные файлы
+common/version.h
