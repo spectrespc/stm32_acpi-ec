@@ -19,3 +19,6 @@ tools/bootloader_tool/bootloader_tool
 
 # Сгенерированные файлы
 common/version.h
+
+# Локальные планы сессий Kilo (не часть проекта)
+.kilo/plans/

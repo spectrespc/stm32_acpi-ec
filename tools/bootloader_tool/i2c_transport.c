@@ -16,14 +16,15 @@
 int i2c_transport_open(const char *device, uint8_t addr)
 {
     int fd = open(device, O_RDWR);
-    if (fd < 0) {
+    if (fd < 0)
+    {
         fprintf(stderr, "Cannot open %s: %s\n", device, strerror(errno));
         return -1;
     }
 
-    if (ioctl(fd, I2C_SLAVE, addr) < 0) {
-        fprintf(stderr, "Cannot set I2C address 0x%02X: %s\n",
-                addr, strerror(errno));
+    if (ioctl(fd, I2C_SLAVE, addr) < 0)
+    {
+        fprintf(stderr, "Cannot set I2C address 0x%02X: %s\n", addr, strerror(errno));
         close(fd);
         return -1;
     }
@@ -31,15 +32,13 @@ int i2c_transport_open(const char *device, uint8_t addr)
     return fd;
 }
 
-int i2c_transport_write_read(int fd,
-                             const uint8_t *wbuf, size_t wlen,
-                             uint8_t *rbuf, size_t rlen)
+int i2c_transport_write_read(int fd, const uint8_t *wbuf, size_t wlen, uint8_t *rbuf, size_t rlen)
 {
     /* Записываем команду */
     ssize_t written = write(fd, wbuf, wlen);
-    if (written != (ssize_t)wlen) {
-        fprintf(stderr, "I2C write failed (%zd/%zu): %s\n",
-                written, wlen, strerror(errno));
+    if (written != (ssize_t)wlen)
+    {
+        fprintf(stderr, "I2C write failed (%zd/%zu): %s\n", written, wlen, strerror(errno));
         return -1;
     }
 
@@ -47,14 +46,17 @@ int i2c_transport_write_read(int fd,
     usleep(I2C_WRITE_READ_DELAY_US);
 
     /* Читаем ответ с несколькими попытками */
-    for (int attempt = 0; attempt < I2C_READ_RETRIES; attempt++) {
+    for (int attempt = 0; attempt < I2C_READ_RETRIES; attempt++)
+    {
         ssize_t readed = read(fd, rbuf, rlen);
 
-        if (readed >= 3) {
+        if (readed >= 3)
+        {
             return 0;
         }
 
-        if (attempt < I2C_READ_RETRIES - 1) {
+        if (attempt < I2C_READ_RETRIES - 1)
+        {
             usleep(I2C_WRITE_READ_DELAY_US);
         }
     }
@@ -66,9 +68,9 @@ int i2c_transport_write_read(int fd,
 int i2c_transport_write_only(int fd, const uint8_t *buf, size_t len)
 {
     ssize_t written = write(fd, buf, len);
-    if (written != (ssize_t)len) {
-        fprintf(stderr, "I2C write failed (%zd/%zu): %s\n",
-                written, len, strerror(errno));
+    if (written != (ssize_t)len)
+    {
+        fprintf(stderr, "I2C write failed (%zd/%zu): %s\n", written, len, strerror(errno));
         return -1;
     }
 

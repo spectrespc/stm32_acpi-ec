@@ -30,8 +30,12 @@ target_link_options(app.elf PRIVATE
     -Wl,-Map=${CMAKE_BINARY_DIR}/app.map
 )
 
+# .elf кладётся в корень сборки с расширением .elf — как ожидают
+# README, CI и release-скрипты (build/app.elf).
 set_target_properties(app.elf PROPERTIES
     OUTPUT_NAME app
+    SUFFIX ".elf"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     LINK_DEPENDS ${APP_LDSCRIPT}
 )
 

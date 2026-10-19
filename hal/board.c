@@ -22,7 +22,8 @@ static void clock_init_hsi(void)
 {
     RCC->CR |= RCC_CR_HSION;
 
-    while ((RCC->CR & RCC_CR_HSIRDY) == 0U) {
+    while ((RCC->CR & RCC_CR_HSIRDY) == 0U)
+    {
         ;
     }
 
@@ -32,7 +33,8 @@ static void clock_init_hsi(void)
     /* Дожидаемся фактического переключения системного такта на HSI
      * (SWS = 00) и только потом отключаем PLL/HSE — иначе при запуске
      * из окружения с активным PLL системный такт пропадёт. */
-    while ((RCC->CFGR & RCC_CFGR_SWS) != 0U) {
+    while ((RCC->CFGR & RCC_CFGR_SWS) != 0U)
+    {
         ;
     }
 #endif
@@ -50,7 +52,8 @@ static void delay_ms(uint32_t ms)
 {
     uint32_t start = ms_ticks;
 
-    while ((uint32_t)(ms_ticks - start) < ms) {
+    while ((uint32_t)(ms_ticks - start) < ms)
+    {
         __NOP();
     }
 }
@@ -59,23 +62,11 @@ static void host_power_init(void)
 {
     LL_APB2_GRP1_EnableClock(HOST_PWR_GPIO_CLK);
 
-    LL_GPIO_SetPinMode(
-        HOST_PWR_GPIO_PORT,
-        HOST_PWR_GPIO_PIN,
-        LL_GPIO_MODE_OUTPUT
-    );
+    LL_GPIO_SetPinMode(HOST_PWR_GPIO_PORT, HOST_PWR_GPIO_PIN, LL_GPIO_MODE_OUTPUT);
 
-    LL_GPIO_SetPinOutputType(
-        HOST_PWR_GPIO_PORT,
-        HOST_PWR_GPIO_PIN,
-        LL_GPIO_OUTPUT_PUSHPULL
-    );
+    LL_GPIO_SetPinOutputType(HOST_PWR_GPIO_PORT, HOST_PWR_GPIO_PIN, LL_GPIO_OUTPUT_PUSHPULL);
 
-    LL_GPIO_SetPinSpeed(
-        HOST_PWR_GPIO_PORT,
-        HOST_PWR_GPIO_PIN,
-        LL_GPIO_SPEED_FREQ_LOW
-    );
+    LL_GPIO_SetPinSpeed(HOST_PWR_GPIO_PORT, HOST_PWR_GPIO_PIN, LL_GPIO_SPEED_FREQ_LOW);
 
 #if HOST_PWR_ACTIVE_HIGH
     LL_GPIO_SetOutputPin(HOST_PWR_GPIO_PORT, HOST_PWR_GPIO_PIN);
@@ -89,23 +80,11 @@ void led_init(void)
 {
     LL_APB2_GRP1_EnableClock(LED_GPIO_CLK);
 
-    LL_GPIO_SetPinMode(
-        LED_GPIO_PORT,
-        LED_GPIO_PIN,
-        LL_GPIO_MODE_OUTPUT
-    );
+    LL_GPIO_SetPinMode(LED_GPIO_PORT, LED_GPIO_PIN, LL_GPIO_MODE_OUTPUT);
 
-    LL_GPIO_SetPinOutputType(
-        LED_GPIO_PORT,
-        LED_GPIO_PIN,
-        LL_GPIO_OUTPUT_PUSHPULL
-    );
+    LL_GPIO_SetPinOutputType(LED_GPIO_PORT, LED_GPIO_PIN, LL_GPIO_OUTPUT_PUSHPULL);
 
-    LL_GPIO_SetPinSpeed(
-        LED_GPIO_PORT,
-        LED_GPIO_PIN,
-        LL_GPIO_SPEED_FREQ_LOW
-    );
+    LL_GPIO_SetPinSpeed(LED_GPIO_PORT, LED_GPIO_PIN, LL_GPIO_SPEED_FREQ_LOW);
 
     led_off();
 }
@@ -130,9 +109,12 @@ void led_off(void)
 
 void led_toggle(void)
 {
-    if (LL_GPIO_IsOutputPinSet(LED_GPIO_PORT, LED_GPIO_PIN)) {
+    if (LL_GPIO_IsOutputPinSet(LED_GPIO_PORT, LED_GPIO_PIN))
+    {
         led_off();
-    } else {
+    }
+    else
+    {
         led_on();
     }
 }
@@ -140,7 +122,8 @@ void led_toggle(void)
 #ifdef BOOT_BUILD
 void led_blink(uint32_t count, uint32_t ms)
 {
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < count; i++)
+    {
         led_on();
         delay_ms(ms);
         led_off();

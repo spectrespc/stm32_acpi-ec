@@ -29,9 +29,9 @@ static void test_save_and_read_roundtrip(void)
 
     MetaConfig w = {0};
     w.img_size = 1234U;
-    w.img_crc  = 0xDEADBEEFUL;
-    w.version  = 0x00010000UL;
-    w.flags    = META_FLAG_VALID;
+    w.img_crc = 0xDEADBEEFUL;
+    w.version = 0x00010000UL;
+    w.flags = META_FLAG_VALID;
 
     TEST_ASSERT_TRUE(meta_save(&w));
 
@@ -52,10 +52,10 @@ static void test_pingpong_increments_sequence(void)
     MetaConfig w = {0};
     w.flags = META_FLAG_VALID;
 
-    TEST_ASSERT_TRUE(meta_save(&w));   /* page 0, seq 1 */
+    TEST_ASSERT_TRUE(meta_save(&w)); /* page 0, seq 1 */
 
     w.img_size = 2048U;
-    TEST_ASSERT_TRUE(meta_save(&w));   /* page 1, seq 2 */
+    TEST_ASSERT_TRUE(meta_save(&w)); /* page 1, seq 2 */
 
     MetaConfig r;
     int page = -1;
@@ -71,10 +71,10 @@ static void test_higher_sequence_wins(void)
 
     MetaConfig w = {0};
     w.flags = META_FLAG_VALID;
-    meta_save(&w);              /* page 0, seq 1 */
+    meta_save(&w); /* page 0, seq 1 */
 
     w.version = 0x00020000UL;
-    meta_save(&w);              /* page 1, seq 2 */
+    meta_save(&w); /* page 1, seq 2 */
 
     MetaConfig r;
     int page = -1;
@@ -90,10 +90,10 @@ static void test_corrupt_page_falls_back(void)
     MetaConfig w = {0};
     w.flags = META_FLAG_VALID;
     w.version = 0x00010000UL;
-    meta_save(&w);              /* page 0, seq 1 */
+    meta_save(&w); /* page 0, seq 1 */
 
     w.version = 0x00020000UL;
-    meta_save(&w);              /* page 1, seq 2 */
+    meta_save(&w); /* page 1, seq 2 */
 
     /* Портим magic в странице 1 — должна остаться валидной страница 0. */
     mock_flash_set(META_PAGE1_ADDR, 0x00);
@@ -131,14 +131,14 @@ static void test_boot_confirm_noop_without_pending(void)
 
     MetaConfig w = {0};
     w.flags = META_FLAG_VALID;
-    meta_save(&w);              /* seq 1, page 0 */
+    meta_save(&w); /* seq 1, page 0 */
 
-    TEST_ASSERT_TRUE(boot_confirm());  /* подтверждать нечего */
+    TEST_ASSERT_TRUE(boot_confirm()); /* подтверждать нечего */
 
     MetaConfig r;
     int page = -1;
     TEST_ASSERT_TRUE(meta_read_current(&r, &page));
-    TEST_ASSERT_EQUAL_UINT32(1U, r.seq);   /* страница не переписана */
+    TEST_ASSERT_EQUAL_UINT32(1U, r.seq); /* страница не переписана */
 }
 
 int main(void)

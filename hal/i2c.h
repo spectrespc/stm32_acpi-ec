@@ -13,9 +13,9 @@
 #define I2C_RX_BUF_SIZE 260U
 #define I2C_TX_BUF_SIZE 260U
 
-extern volatile uint8_t  rx_buf[I2C_RX_BUF_SIZE];
+extern volatile uint8_t rx_buf[I2C_RX_BUF_SIZE];
 extern volatile uint16_t rx_count;
-extern volatile uint8_t  i2c_process_request;
+extern volatile uint8_t i2c_process_request;
 
 void i2c_init(void);
 

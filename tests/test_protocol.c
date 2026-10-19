@@ -29,11 +29,10 @@ static void test_parse_valid_frame(void)
 {
     const uint8_t buf[] = {0x02, 0x00, CMD_GET_INFO, 0xAA};
     uint16_t frame_len = 0;
-    uint8_t  cmd = 0;
+    uint8_t cmd = 0;
     uint16_t plen = 0;
 
-    TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 260,
-                                            &frame_len, &cmd, &plen));
+    TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 260, &frame_len, &cmd, &plen));
     TEST_ASSERT_EQUAL_UINT16(2U, frame_len);
     TEST_ASSERT_EQUAL_UINT16(CMD_GET_INFO, cmd);
     TEST_ASSERT_EQUAL_UINT16(1U, plen);
@@ -42,41 +41,35 @@ static void test_parse_valid_frame(void)
 static void test_parse_zero_length_rejected(void)
 {
     const uint8_t buf[] = {0x00, 0x00, 0x01};
-    TEST_ASSERT_FALSE(protocol_parse_request(buf, sizeof buf, 260,
-                                             NULL, NULL, NULL));
+    TEST_ASSERT_FALSE(protocol_parse_request(buf, sizeof buf, 260, NULL, NULL, NULL));
 }
 
 static void test_parse_truncated_rejected(void)
 {
     const uint8_t buf[] = {0x05, 0x00, 0x01};
-    TEST_ASSERT_FALSE(protocol_parse_request(buf, sizeof buf, 260,
-                                             NULL, NULL, NULL));
+    TEST_ASSERT_FALSE(protocol_parse_request(buf, sizeof buf, 260, NULL, NULL, NULL));
 }
 
 static void test_parse_max_len_rejected(void)
 {
     const uint8_t buf[] = {0x02, 0x00, CMD_GET_INFO, 0xAA};
-    TEST_ASSERT_FALSE(protocol_parse_request(buf, sizeof buf, 3,
-                                             NULL, NULL, NULL));
+    TEST_ASSERT_FALSE(protocol_parse_request(buf, sizeof buf, 3, NULL, NULL, NULL));
 }
 
 static void test_parse_max_len_boundary(void)
 {
     const uint8_t buf[] = {0x02, 0x00, CMD_GET_INFO, 0xAA};
-    TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 4,
-                                            NULL, NULL, NULL));
+    TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 4, NULL, NULL, NULL));
 }
 
 static void test_parse_write_data_header(void)
 {
     /* WRITE_DATA: LEN = 1(cmd) + 4(offset) + 1(len) = 6 */
-    const uint8_t buf[] = {0x06, 0x00, CMD_WRITE_DATA,
-                           0x00, 0x00, 0x00, 0x00, 0x20};
-    uint8_t  cmd = 0;
+    const uint8_t buf[] = {0x06, 0x00, CMD_WRITE_DATA, 0x00, 0x00, 0x00, 0x00, 0x20};
+    uint8_t cmd = 0;
     uint16_t plen = 0;
 
-    TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 260,
-                                            NULL, &cmd, &plen));
+    TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 260, NULL, &cmd, &plen));
     TEST_ASSERT_EQUAL_UINT16(CMD_WRITE_DATA, cmd);
     TEST_ASSERT_EQUAL_UINT16(5U, plen);
 }

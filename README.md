@@ -44,6 +44,45 @@ cmake -B build_host
 cmake --build build_host --target check
 ```
 
+## CI/CD, линтинг и прошивка
+
+Пайплайн автоматизации на **GitHub Actions**:
+
+| Workflow | Триггер | Назначение |
+|----------|---------|------------|
+| `.github/workflows/ci.yml` | push/PR в `main` | clang-format, cppcheck, сборка C8T6+CBT6, тесты |
+| `.github/workflows/release.yml` | тег `v*.*.*` | релизные образы + GitHub Release |
+| `.github/workflows/flash.yml` | `workflow_dispatch` | прошивка на self-hosted runner (ST-Link + I2C OTA) |
+
+Локальные проверки (нативная сборка):
+
+```bash
+cmake -B build_host
+cmake --build build_host --target format        # автоформатирование
+cmake --build build_host --target format-check  # проверка стиля
+cmake --build build_host --target cppcheck      # статический анализ
+```
+
+Pre-commit-хуки (формат, пробелы, YAML, защита `main`):
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+Скрипты разработчика:
+
+```bash
+./scripts/push_changes.sh "boot: описание"      # проверки → коммит → пуш
+./scripts/tag_release.sh 1.0.1 "Описание"       # полная проверка → тег → релиз
+```
+
+Прошивка на self-hosted runner:
+
+```bash
+gh workflow run flash.yml -f mcu=C8T6 -f flash_bootloader=false
+```
+
 ## Структура
 
 ```

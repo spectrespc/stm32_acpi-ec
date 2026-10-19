@@ -12,13 +12,15 @@
 
 bool app_validate(void)
 {
-    if ((meta.flags & META_FLAG_VALID) == 0U) {
+    if ((meta.flags & META_FLAG_VALID) == 0U)
+    {
         return false;
     }
 
     uint32_t len = meta.img_size;
 
-    if (len < 8U || len > APP_SIZE) {
+    if (len < 8U || len > APP_SIZE)
+    {
         return false;
     }
 
@@ -26,18 +28,21 @@ bool app_validate(void)
     uint32_t pc = *(__IO uint32_t *)(APP_ADDR + 4U);
 
     /* Initial SP должен находиться в RAM 20 KB */
-    if (sp < 0x20000000UL || sp > 0x20005000UL) {
+    if (sp < 0x20000000UL || sp > 0x20005000UL)
+    {
         return false;
     }
 
     /* Reset vector должен быть Thumb и находиться внутри образа */
-    if ((pc & 1UL) == 0U) {
+    if ((pc & 1UL) == 0U)
+    {
         return false;
     }
 
     uint32_t entry = pc & ~1UL;
 
-    if (entry < APP_ADDR || entry >= APP_ADDR + len) {
+    if (entry < APP_ADDR || entry >= APP_ADDR + len)
+    {
         return false;
     }
 
@@ -72,20 +77,24 @@ void boot_app(uint32_t addr)
     void (*app_reset)(void) = (void (*)(void))pc;
     app_reset();
 
-    while (1) {
+    while (1)
+    {
         ;
     }
 }
 
 void try_boot_selected(void)
 {
-    if (!app_validate()) {
+    if (!app_validate())
+    {
         /* Образ отсутствует или повреждён — остаёмся в загрузчике */
         return;
     }
 
-    if (meta.flags & META_FLAG_PENDING) {
-        if (meta.boot_attempts >= MAX_BOOT_ATTEMPTS) {
+    if (meta.flags & META_FLAG_PENDING)
+    {
+        if (meta.boot_attempts >= MAX_BOOT_ATTEMPTS)
+        {
             /* Прошивка не подтвердила запуск несколько раз подряд —
              * помечаем её как невалидную. */
             MetaConfig m = meta;

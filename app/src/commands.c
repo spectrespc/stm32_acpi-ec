@@ -35,8 +35,7 @@ static void handle_get_info(void)
     out[1] = PROTO_VER;
     proto_put_le32(&out[2], FW_VERSION);
     proto_put_le32(&out[6], have_meta ? m.img_size : 0U);
-    out[10] = (have_meta && (m.flags & META_FLAG_PENDING))
-                  ? INFO_FLAG_PENDING : 0U;
+    out[10] = (have_meta && (m.flags & META_FLAG_PENDING)) ? INFO_FLAG_PENDING : 0U;
     out[11] = BAT_NUM_CELLS;
 
     i2c_set_response(ST_OK, out, sizeof(out));
@@ -56,7 +55,7 @@ static void handle_get_battery_data(void)
     proto_put_le16(&out[4], (uint16_t)bat->temperature_c10);
     out[6] = bat->soc_percent;
     out[7] = bat->status;
-    proto_put_le16(&out[8],  bat->cell_mv[0]);
+    proto_put_le16(&out[8], bat->cell_mv[0]);
     proto_put_le16(&out[10], bat->cell_mv[1]);
     proto_put_le16(&out[12], bat->cell_mv[2]);
 
@@ -99,7 +98,8 @@ static void handle_get_temperature(void)
  * до сброса (мастер читает ответ сразу после записи команды). */
 static void drain_delay(void)
 {
-    for (volatile uint32_t i = 0; i < 200000UL; i++) {
+    for (volatile uint32_t i = 0; i < 200000UL; i++)
+    {
         ;
     }
 }
@@ -141,45 +141,47 @@ static void handle_enter_update_mode(void)
 void app_process_i2c_request(void)
 {
     uint16_t frame_len;
-    uint8_t  cmd;
+    uint8_t cmd;
 
-    if (!protocol_parse_request((const uint8_t *)rx_buf, rx_count, I2C_RX_BUF_SIZE,
-                                &frame_len, &cmd, NULL)) {
+    if (!protocol_parse_request((const uint8_t *)rx_buf, rx_count, I2C_RX_BUF_SIZE, &frame_len,
+                                &cmd, NULL))
+    {
         (void)frame_len;
         i2c_set_status(ST_ERR_LEN);
         return;
     }
 
-    switch (cmd) {
-        case CMD_GET_INFO:
-            handle_get_info();
-            break;
+    switch (cmd)
+    {
+    case CMD_GET_INFO:
+        handle_get_info();
+        break;
 
-        case BAT_CMD_GET_DATA:
-            battery_update(); /* обновить данные перед отправкой */
-            handle_get_battery_data();
-            break;
+    case BAT_CMD_GET_DATA:
+        battery_update(); /* обновить данные перед отправкой */
+        handle_get_battery_data();
+        break;
 
-        case BAT_CMD_GET_CELL_VOLT:
-            handle_get_cell_voltages();
-            break;
+    case BAT_CMD_GET_CELL_VOLT:
+        handle_get_cell_voltages();
+        break;
 
-        case BAT_CMD_GET_TEMP:
-            handle_get_temperature();
-            break;
+    case BAT_CMD_GET_TEMP:
+        handle_get_temperature();
+        break;
 
-        case CMD_RESET:
-            /* Функция не возвращает управление — будет сброс */
-            handle_reset();
-            break;
+    case CMD_RESET:
+        /* Функция не возвращает управление — будет сброс */
+        handle_reset();
+        break;
 
-        case CMD_ENTER_UPDATE:
-            /* Функция не возвращает управление — будет сброс */
-            handle_enter_update_mode();
-            break;
+    case CMD_ENTER_UPDATE:
+        /* Функция не возвращает управление — будет сброс */
+        handle_enter_update_mode();
+        break;
 
-        default:
-            i2c_set_status(ST_ERR_CMD);
-            break;
+    default:
+        i2c_set_status(ST_ERR_CMD);
+        break;
     }
 }

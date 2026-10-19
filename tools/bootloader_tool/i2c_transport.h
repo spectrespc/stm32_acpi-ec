@@ -11,10 +11,10 @@
 #include <stdint.h>
 
 /* Задержка между записью и чтением (CP2112 — медленный USB-I2C мост). */
-#define I2C_WRITE_READ_DELAY_US 100000  /* 100 мс */
+#define I2C_WRITE_READ_DELAY_US 100000 /* 100 мс */
 
 /* Количество попыток чтения ответа. */
-#define I2C_READ_RETRIES        5
+#define I2C_READ_RETRIES 5
 
 /* Открыть I2C-устройство и выставить 7-битный адрес slave.
  * Возврат: fd >= 0 при успехе, -1 при ошибке. */
@@ -22,9 +22,7 @@ int i2c_transport_open(const char *device, uint8_t addr);
 
 /* Записать wbuf, выдержать паузу и прочитать ответ в rbuf.
  * Возврат: 0 при успехе, -1 при ошибке. */
-int i2c_transport_write_read(int fd,
-                             const uint8_t *wbuf, size_t wlen,
-                             uint8_t *rbuf, size_t rlen);
+int i2c_transport_write_read(int fd, const uint8_t *wbuf, size_t wlen, uint8_t *rbuf, size_t rlen);
 
 /* Записать buf без чтения ответа (например, CMD_RESET). */
 int i2c_transport_write_only(int fd, const uint8_t *buf, size_t len);

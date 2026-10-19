@@ -40,9 +40,11 @@ int main(void)
     uint32_t last_led = millis();
     uint32_t last_bat_update = millis();
 
-    while (1) {
+    while (1)
+    {
         /* Обрабатываем I2C запросы максимально быстро */
-        if (i2c_process_request) {
+        if (i2c_process_request)
+        {
             i2c_process_request = 0;
             app_process_i2c_request();
         }
@@ -50,13 +52,15 @@ int main(void)
         uint32_t now = millis();
 
         /* Мигание LED раз в 500 мс (неблокирующим способом) */
-        if ((uint32_t)(now - last_led) >= 500U) {
+        if ((uint32_t)(now - last_led) >= 500U)
+        {
             last_led = now;
             led_toggle();
         }
 
         /* Обновление данных батареи раз в 1 секунду */
-        if ((uint32_t)(now - last_bat_update) >= 1000U) {
+        if ((uint32_t)(now - last_bat_update) >= 1000U)
+        {
             last_bat_update = now;
             battery_update();
         }

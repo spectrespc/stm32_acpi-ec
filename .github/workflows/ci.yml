@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      # Версия clang-format закреплена на 18.x — согласована с ревизией
+      # mirrors-clang-format в .pre-commit-config.yaml (v18.1.8).
+      - run: sudo apt-get update && sudo apt-get install -y clang-format-18
+      - run: sudo ln -sf /usr/bin/clang-format-18 /usr/local/bin/clang-format
+      - run: cmake -B build_host
+      - run: cmake --build build_host --target format-check
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: sudo apt-get update && sudo apt-get install -y cppcheck
+      - run: cmake -B build_host
+      - run: cmake --build build_host --target cppcheck
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mcu: [C8T6, CBT6]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Настройка SDK и тулчейна
+        uses: ./.github/actions/setup-sdk
+
+      - name: Кросс-сборка (${{ matrix.mcu }})
+        run: |
+          cmake -B build_${{ matrix.mcu }} \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake \
+            -DMCU=${{ matrix.mcu }}
+          cmake --build build_${{ matrix.mcu }}
+
+      - name: Тесты (host, только C8T6)
+        if: matrix.mcu == 'C8T6'
+        run: |
+          cmake -B build_host
+          cmake --build build_host --target check
+
+      - name: Архивация артефактов
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: firmware-${{ matrix.mcu }}
+          path: |
+            build_${{ matrix.mcu }}/bootloader.bin
+            build_${{ matrix.mcu }}/bootloader.hex
+            build_${{ matrix.mcu }}/bootloader.elf
+            build_${{ matrix.mcu }}/bootloader.map
+            build_${{ matrix.mcu }}/app.bin
+            build_${{ matrix.mcu }}/app.hex
+            build_${{ matrix.mcu }}/app.elf
+            build_${{ matrix.mcu }}/app.map
+          retention-days: 7

@@ -31,7 +31,8 @@ void system_enable_irqs(void)
 
 void system_clear_irqs(void)
 {
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++)
+    {
         NVIC->ICER[i] = 0xFFFFFFFFUL;
         NVIC->ICPR[i] = 0xFFFFFFFFUL;
     }
@@ -41,5 +42,5 @@ void system_stop_systick(void)
 {
     SysTick->CTRL = 0;
     SysTick->LOAD = 0;
-    SysTick->VAL  = 0;
+    SysTick->VAL = 0;
 }

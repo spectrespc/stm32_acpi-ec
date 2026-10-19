@@ -17,7 +17,8 @@
 
 static void flash_wait_busy(void)
 {
-    while (FLASH->SR & FLASH_SR_BSY) {
+    while (FLASH->SR & FLASH_SR_BSY)
+    {
         ;
     }
 }
@@ -29,7 +30,8 @@ void flash_read(uint32_t addr, void *dst, uint32_t len)
 
 void flash_unlock(void)
 {
-    if (FLASH->CR & FLASH_CR_LOCK) {
+    if (FLASH->CR & FLASH_CR_LOCK)
+    {
         FLASH->KEYR = FLASH_KEY1;
         FLASH->KEYR = FLASH_KEY2;
     }
@@ -45,7 +47,7 @@ int flash_erase_page_raw(uint32_t addr)
     flash_wait_busy();
 
     FLASH->CR |= FLASH_CR_PER;
-    FLASH->AR  = addr;
+    FLASH->AR = addr;
     FLASH->CR |= FLASH_CR_STRT;
 
     flash_wait_busy();
@@ -67,7 +69,11 @@ int flash_program_halfword_raw(uint32_t addr, uint16_t value)
 
     FLASH->CR &= ~FLASH_CR_PG;
 
-    if (*(__IO uint16_t *)addr != value) {
+    /* cppcheck-suppress knownConditionTrueFalse
+     * Чтение регистра Flash после программирования — аппаратное
+     * значение, cppcheck не учитывает изменение памяти. */
+    if (*(__IO uint16_t *)addr != value)
+    {
         return -1;
     }
 
@@ -102,16 +108,21 @@ int flash_program_buffer(uint32_t addr, const uint8_t *data, uint16_t len)
 
     int rc = 0;
 
-    for (uint16_t i = 0; i < len; ) {
+    for (uint16_t i = 0; i < len;)
+    {
         uint16_t hw;
 
-        if ((i + 1U) < len) {
+        if ((i + 1U) < len)
+        {
             hw = (uint16_t)data[i] | ((uint16_t)data[i + 1U] << 8);
-        } else {
+        }
+        else
+        {
             hw = (uint16_t)data[i] | 0xFF00U;
         }
 
-        if (flash_program_halfword_raw(addr + i, hw) != 0) {
+        if (flash_program_halfword_raw(addr + i, hw) != 0)
+        {
             rc = -1;
             break;
         }

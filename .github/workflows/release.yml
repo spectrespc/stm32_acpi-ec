@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        mcu: [C8T6, CBT6]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Настройка SDK и тулчейна
+        uses: ./.github/actions/setup-sdk
+
+      - name: Кросс-сборка (${{ matrix.mcu }})
+        run: |
+          cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake -DMCU=${{ matrix.mcu }}
+          cmake --build build
+
+      - name: Сборка bootloader_tool и тесты (только C8T6)
+        if: matrix.mcu == 'C8T6'
+        run: |
+          cmake -B build_host
+          cmake --build build_host --target bootloader_tool
+          cmake --build build_host --target check
+
+      - name: Подготовка артефактов
+        run: |
+          mcu=${{ matrix.mcu }}
+          mkdir -p release
+          cp build/bootloader.bin "release/bootloader_${mcu}.bin"
+          cp build/bootloader.hex "release/bootloader_${mcu}.hex"
+          cp build/bootloader.elf "release/bootloader_${mcu}.elf"
+          cp build/bootloader.map "release/bootloader_${mcu}.map"
+          cp build/app.bin "release/app_${mcu}.bin"
+          cp build/app.hex "release/app_${mcu}.hex"
+          cp build/app.elf "release/app_${mcu}.elf"
+          cp build/app.map "release/app_${mcu}.map"
+          if [ -f build_host/tools/bootloader_tool/bootloader_tool ]; then
+            cp build_host/tools/bootloader_tool/bootloader_tool release/
+          fi
+
+      - name: Архивация артефактов
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-${{ matrix.mcu }}
+          path: release/
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: release
+          merge-multiple: true
+
+      - name: Создать GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          name: "Release ${{ github.ref_name }}"
+          body: |
+            ## stm32_acpi-ec ${{ github.ref_name }}
+
+            Прошивки для **STM32F103C8T6** (64 KB) и **STM32F103CBT6** (128 KB).
+
+            Имена файлов содержат вариант MCU, например
+            `bootloader_C8T6.elf`, `app_CBT6.bin`. В комплекте также
+            `bootloader_tool` (x86_64) и `.map`-карты памяти.
+
+            ### Прошивка загрузчика (ST-Link v2)
+            ```bash
+            openocd -f interface/stlink.cfg -f target/stm32f1x.cfg \
+              -c "program bootloader_C8T6.elf verify reset exit"
+            ```
+
+            ### Прошивка приложения (I2C OTA)
+            ```bash
+            chmod +x bootloader_tool
+            ./bootloader_tool ec /dev/i2c-7 flash app_C8T6.bin 0x00010000
+            ./bootloader_tool ec /dev/i2c-7 reset
+            ```
+
+            > **Примечание**: версия в аргументе `flash` — SemVer в hex
+            > (`0xMMmmpp`). После публикации релиза обновите `docs/changelog.md`.
+          files: release/**
+          overwrite_files: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

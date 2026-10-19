@@ -13,11 +13,11 @@
 #include <stdint.h>
 
 #ifndef FLASH_KEY1
-#define FLASH_KEY1          0x45670123UL
+#define FLASH_KEY1 0x45670123UL
 #endif
 
 #ifndef FLASH_KEY2
-#define FLASH_KEY2          0xCDEF89ABUL
+#define FLASH_KEY2 0xCDEF89ABUL
 #endif
 
 /* Чтение из Flash через memcpy-совместимый доступ

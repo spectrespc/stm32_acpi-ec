@@ -22,21 +22,22 @@
 #define META_MAGIC 0x424F4F54UL /* 'BOOT' */
 
 /* Флаги состояния (поле flags) */
-#define META_FLAG_VALID     (1U << 0)  /* образ прошёл проверку */
-#define META_FLAG_PENDING   (1U << 1)  /* образ ожидает подтверждения запуска */
+#define META_FLAG_VALID   (1U << 0) /* образ прошёл проверку */
+#define META_FLAG_PENDING (1U << 1) /* образ ожидает подтверждения запуска */
 
-typedef struct {
+typedef struct
+{
     uint32_t magic;
-    uint32_t seq;          /* счётчик записи для ping-pong страниц */
+    uint32_t seq; /* счётчик записи для ping-pong страниц */
 
-    uint32_t img_size;     /* размер образа, байт */
-    uint32_t img_crc;      /* CRC32 образа */
-    uint32_t version;      /* версия прошивки */
+    uint32_t img_size; /* размер образа, байт */
+    uint32_t img_crc;  /* CRC32 образа */
+    uint32_t version;  /* версия прошивки */
 
     uint16_t boot_attempts;
-    uint16_t flags;        /* META_FLAG_* */
+    uint16_t flags; /* META_FLAG_* */
 
-    uint16_t crc16;        /* CRC16-CCITT всего выше, до этого поля */
+    uint16_t crc16; /* CRC16-CCITT всего выше, до этого поля */
     uint16_t reserved;
 } MetaConfig;
 

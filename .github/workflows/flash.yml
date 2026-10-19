@@ -1,0 +1,93 @@
+name: Flash Hardware
+
+on:
+  workflow_dispatch:
+    inputs:
+      mcu:
+        description: 'Вариант MCU'
+        required: true
+        type: choice
+        default: 'C8T6'
+        options: ['C8T6', 'CBT6']
+      flash_bootloader:
+        description: 'Прошивать/восстанавливать загрузчик (ST-Link) [осторожно]'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  flash:
+    runs-on: [self-hosted, stm32]
+    timeout-minutes: 15
+    env:
+      BOOTLOADER_TOOL: ${{ github.workspace }}/build_host/tools/bootloader_tool/bootloader_tool
+      I2C_DEVICE: /dev/i2c-7
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Проверка тулчейна
+        run: |
+          arm-none-eabi-gcc --version
+          openocd --version 2>&1 | head -1
+          cmake --version | head -1
+          test -x "$BOOTLOADER_TOOL" || echo "bootloader_tool будет собран далее"
+
+      - name: Проверка I2C-устройства (обязательно для OTA)
+        run: |
+          if ! test -c "$I2C_DEVICE"; then
+            echo "ОШИБКА: I2C-устройство $I2C_DEVICE не найдено — OTA-прошивка невозможна"
+            exit 1
+          fi
+
+      - name: Очистка каталогов сборки (self-hosted, ранее могли быть сконфигурированы иначе)
+        run: rm -rf build build_host
+
+      - name: Кросс-сборка (${{ inputs.mcu }})
+        run: |
+          cmake -B build \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake \
+            -DMCU=${{ inputs.mcu }}
+          cmake --build build --target boot.elf app.elf
+
+      - name: Сборка bootloader_tool и тесты
+        run: |
+          cmake -B build_host
+          cmake --build build_host --target bootloader_tool
+          cmake --build build_host --target check
+
+      - name: Прошивка приложения (I2C OTA, retry до 3 раз)
+        id: flash-app
+        continue-on-error: true
+        run: |
+          for i in 1 2 3; do
+            echo "=== Попытка $i/3 ==="
+            if cmake --build build --target flash-app-i2c; then
+              echo "SUCCESS"
+              exit 0
+            fi
+            echo "Попытка $i провалена, пауза 2 сек..."
+            sleep 2
+          done
+          echo "Все 3 попытки I2C-прошивки провалены"
+          exit 1
+
+      - name: ST-Link fallback (аварийная прошивка)
+        if: steps.flash-app.outcome == 'failure'
+        run: |
+          if [ "${{ inputs.flash_bootloader }}" = "true" ]; then
+            echo "=== Восстановление загрузчика и приложения через ST-Link ==="
+            # OpenOCD сам стирает программируемые секторы (без mass_erase,
+            # чтобы не оставить устройство без загрузчика при сбое).
+            cmake --build build --target flash-boot
+            cmake --build build --target flash-app
+          else
+            echo "=== Восстановление только приложения через ST-Link ==="
+            echo "(загрузчик не трогается: flash_bootloader=false)"
+            cmake --build build --target flash-app
+          fi
+
+      - name: Верификация
+        if: success()
+        run: cmake --build build --target info-app

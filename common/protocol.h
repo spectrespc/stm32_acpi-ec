@@ -23,14 +23,14 @@
  * Команды
  * ======================================================================== */
 
-#define CMD_GET_INFO        0x01U
-#define CMD_BEGIN_UPDATE    0x02U
-#define CMD_WRITE_DATA      0x03U
-#define CMD_VERIFY_UPDATE   0x04U
-#define CMD_COMMIT          0x05U
-#define CMD_GET_STATUS      0x07U
-#define CMD_RESET           0x08U
-#define CMD_ENTER_UPDATE    0x0EU
+#define CMD_GET_INFO      0x01U
+#define CMD_BEGIN_UPDATE  0x02U
+#define CMD_WRITE_DATA    0x03U
+#define CMD_VERIFY_UPDATE 0x04U
+#define CMD_COMMIT        0x05U
+#define CMD_GET_STATUS    0x07U
+#define CMD_RESET         0x08U
+#define CMD_ENTER_UPDATE  0x0EU
 
 /* ========================================================================
  * Ответ GET_INFO (12 байт, единый для загрузчика и приложения):
@@ -42,12 +42,12 @@
  *   [11]    дополнительно (у приложения — число ячеек батареи)
  * ======================================================================== */
 
-#define PROTO_VER           2
-#define INFO_PAYLOAD_LEN    12
-#define INFO_FLAG_PENDING   (1U << 0)
+#define PROTO_VER         2
+#define INFO_PAYLOAD_LEN  12
+#define INFO_FLAG_PENDING (1U << 0)
 
 /* Максимальный размер данных в одном кадре WRITE_DATA. */
-#define PROTO_MAX_DATA_LEN  128U
+#define PROTO_MAX_DATA_LEN 128U
 
 /* ========================================================================
  * Контракт входа в режим обновления.
@@ -57,8 +57,8 @@
  * 16 байт RAM исключены из стека/кучи в обоих линкер-скриптах.
  * ======================================================================== */
 
-#define UPDATE_MAGIC        0x55AA55AAUL
-#define UPDATE_FLAG_ADDR    0x20004FFCUL
+#define UPDATE_MAGIC     0x55AA55AAUL
+#define UPDATE_FLAG_ADDR 0x20004FFCUL
 
 /* ========================================================================
  * Little-endian упаковка/распаковка
@@ -85,10 +85,7 @@ static inline uint16_t proto_get_le16(const uint8_t *p)
 
 static inline uint32_t proto_get_le32(const uint8_t *p)
 {
-    return (uint32_t)p[0] |
-           ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
 /* ========================================================================

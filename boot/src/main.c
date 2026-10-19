@@ -29,9 +29,10 @@ static int check_update_flag(void)
 {
     volatile uint32_t *flag = (volatile uint32_t *)UPDATE_FLAG_ADDR;
 
-    if (*flag == UPDATE_MAGIC) {
-        *flag = 0;  /* Стираем флаг, чтобы при следующем старте он не сработал */
-        return 1;   /* Остаться в режиме обновления */
+    if (*flag == UPDATE_MAGIC)
+    {
+        *flag = 0; /* Стираем флаг, чтобы при следующем старте он не сработал */
+        return 1;  /* Остаться в режиме обновления */
     }
 
     return 0;
@@ -50,7 +51,8 @@ int main(void)
     /* Проверяем, не запрошен ли вход в режим обновления */
     int force_update = check_update_flag();
 
-    if (!force_update) {
+    if (!force_update)
+    {
         /* Пытаемся запустить прошивку.
          * Если образ валиден, функция выполнит переход в приложение
          * и не вернётся. */
@@ -61,16 +63,19 @@ int main(void)
 
     uint32_t last_led = millis();
 
-    while (1) {
+    while (1)
+    {
         /* Обрабатываем I2C запросы максимально быстро */
-        if (i2c_process_request) {
+        if (i2c_process_request)
+        {
             i2c_process_request = 0;
             process_i2c_request();
         }
 
         /* Мигание LED раз в 500 мс (неблокирующим способом) */
         uint32_t now = millis();
-        if ((uint32_t)(now - last_led) >= 500U) {
+        if ((uint32_t)(now - last_led) >= 500U)
+        {
             last_led = now;
             led_toggle();
         }

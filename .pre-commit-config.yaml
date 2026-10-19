@@ -1,0 +1,30 @@
+# .pre-commit-config.yaml — локальные проверки перед коммитом.
+#
+# Установка (разово):
+#   pip install pre-commit
+#   pre-commit install
+#
+# Ручной прогон по всем файлам:
+#   pre-commit run --all-files
+#
+# Экстренный обход отдельного хука:
+#   SKIP=clang-format git commit -m "..."
+repos:
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.8
+    hooks:
+      - id: clang-format
+        files: \.(c|h)$
+        args: [--style=file, --Werror, --dry-run]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: no-commit-to-branch
+        args: [--branch, main]

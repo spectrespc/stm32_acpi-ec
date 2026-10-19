@@ -29,8 +29,12 @@ target_link_options(boot.elf PRIVATE
     -Wl,-Map=${CMAKE_BINARY_DIR}/bootloader.map
 )
 
+# .elf кладётся в корень сборки с расширением .elf — как ожидают
+# README, CI и release-скрипты (build/bootloader.elf).
 set_target_properties(boot.elf PROPERTIES
     OUTPUT_NAME bootloader
+    SUFFIX ".elf"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
     LINK_DEPENDS ${BOOT_LDSCRIPT}
 )
 

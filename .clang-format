@@ -1,0 +1,19 @@
+# .clang-format — единый стиль кода проекта stm32_acpi_ec.
+#
+# Применяется целями CMake `format` (автоформатирование) и
+# `format-check` (проверка), а также pre-commit-хуком clang-format.
+---
+Language: Cpp
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Allman
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+PointerAlignment: Right
+AlignConsecutiveMacros: true
+IncludeBlocks: Preserve
+SortIncludes: false

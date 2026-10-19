@@ -1,0 +1,25 @@
+name: Setup STM32 SDK
+description: Единая точка настройки SDK STM32CubeF1 и тулчейна arm-none-eabi-gcc
+
+runs:
+  using: composite
+  steps:
+    - name: Кэш STM32CubeF1 SDK
+      id: cache-sdk
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ${{ github.workspace }}/../STM32CubeF1
+        key: stm32cubef1-v1.8.7-v2
+
+    - name: Клонирование STM32CubeF1
+      if: steps.cache-sdk.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        git clone --depth 1 --branch v1.8.7 \
+          https://github.com/STMicroelectronics/STM32CubeF1.git \
+          "${{ github.workspace }}/../STM32CubeF1"
+
+    - name: Установка arm-none-eabi-gcc
+      uses: carlosperate/arm-none-eabi-gcc-action@0edbb000a5a98e2292b051b463bff6f512547118 # v1.14.0
+      with:
+        release: '12.2.Rel1'

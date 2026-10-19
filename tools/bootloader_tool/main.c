@@ -42,26 +42,26 @@
  * Константы протокола (протокол v2, один слот приложения)
  * ======================================================================== */
 
-#define I2C_ADDR7           0x42
-#define I2C_ADDR_MOTOR      0x39   /* STM8 эмулятор моторов                   */
+#define I2C_ADDR7      0x42
+#define I2C_ADDR_MOTOR 0x39 /* STM8 эмулятор моторов                   */
 
-#define CMD_GET_INFO        0x01
-#define CMD_BEGIN_UPDATE    0x02
-#define CMD_WRITE_DATA      0x03
-#define CMD_VERIFY_UPDATE   0x04
-#define CMD_COMMIT          0x05
-#define CMD_GET_STATUS      0x07
-#define CMD_RESET           0x08
-#define CMD_ENTER_UPDATE    0x0E
+#define CMD_GET_INFO      0x01
+#define CMD_BEGIN_UPDATE  0x02
+#define CMD_WRITE_DATA    0x03
+#define CMD_VERIFY_UPDATE 0x04
+#define CMD_COMMIT        0x05
+#define CMD_GET_STATUS    0x07
+#define CMD_RESET         0x08
+#define CMD_ENTER_UPDATE  0x0E
 
-#define ST_OK               0x00
-#define ST_ERR_CMD          0x01
-#define ST_ERR_PARAM        0x02
-#define ST_ERR_STATE        0x03
-#define ST_ERR_FLASH        0x05
-#define ST_ERR_CRC          0x06
-#define ST_ERR_SEQ          0x07
-#define ST_ERR_LEN          0x08
+#define ST_OK        0x00
+#define ST_ERR_CMD   0x01
+#define ST_ERR_PARAM 0x02
+#define ST_ERR_STATE 0x03
+#define ST_ERR_FLASH 0x05
+#define ST_ERR_CRC   0x06
+#define ST_ERR_SEQ   0x07
+#define ST_ERR_LEN   0x08
 
 /* GET_INFO: payload 12 байт, одинаков для загрузчика и прошивки:
  *   [0]     device_type: 1 = загрузчик, 2 = приложение
@@ -71,23 +71,23 @@
  *   [10]    флаги: бит 0 = pending (ожидает подтверждения запуска)
  *   [11]    дополнительно (для приложения: число ячеек батареи)
  */
-#define DEVICE_TYPE_BOOT    1   /* STM32 загрузчик  */
-#define DEVICE_TYPE_APP     2   /* STM32 прошивка   */
+#define DEVICE_TYPE_BOOT       1 /* STM32 загрузчик  */
+#define DEVICE_TYPE_APP        2 /* STM32 прошивка   */
 #define DEVICE_TYPE_MOTOR_BOOT 3 /* STM8 загрузчик   */
 #define DEVICE_TYPE_MOTOR_APP  4 /* STM8 прошивка    */
-#define PROTO_VER           2
-#define INFO_PAYLOAD_LEN    12
-#define INFO_FLAG_PENDING   (1U << 0)
+#define PROTO_VER              2
+#define INFO_PAYLOAD_LEN       12
+#define INFO_FLAG_PENDING      (1U << 0)
 
 /*
  * Размер чанка данных при записи прошивки.
  * Кадр WRITE_DATA: 2(LEN) + 1(CMD) + 4(offset) + 1(len) + N(data) = 8+N.
  * CP2112 ограничивает запись ~61 байтом: 8 + 32 = 40 байт — безопасно.
  */
-#define CHUNK_SIZE          32
+#define CHUNK_SIZE 32
 
 /* Размер буфера чтения (максимальный ответ: 2 + 1 + 12 = 15 байт). */
-#define I2C_READ_BUF_SIZE   64
+#define I2C_READ_BUF_SIZE 64
 
 /* ========================================================================
  * Вспомогательные функции
@@ -95,16 +95,26 @@
 
 static const char *status_str(uint8_t status)
 {
-    switch (status) {
-        case ST_OK:        return "OK";
-        case ST_ERR_CMD:   return "ERR_CMD";
-        case ST_ERR_PARAM: return "ERR_PARAM";
-        case ST_ERR_STATE: return "ERR_STATE";
-        case ST_ERR_FLASH: return "ERR_FLASH";
-        case ST_ERR_CRC:   return "ERR_CRC";
-        case ST_ERR_SEQ:   return "ERR_SEQ";
-        case ST_ERR_LEN:   return "ERR_LEN";
-        default:           return "UNKNOWN";
+    switch (status)
+    {
+    case ST_OK:
+        return "OK";
+    case ST_ERR_CMD:
+        return "ERR_CMD";
+    case ST_ERR_PARAM:
+        return "ERR_PARAM";
+    case ST_ERR_STATE:
+        return "ERR_STATE";
+    case ST_ERR_FLASH:
+        return "ERR_FLASH";
+    case ST_ERR_CRC:
+        return "ERR_CRC";
+    case ST_ERR_SEQ:
+        return "ERR_SEQ";
+    case ST_ERR_LEN:
+        return "ERR_LEN";
+    default:
+        return "UNKNOWN";
     }
 }
 
@@ -129,10 +139,7 @@ static uint16_t get_le16(const uint8_t *p)
 
 static uint32_t get_le32(const uint8_t *p)
 {
-    return (uint32_t)p[0] |
-           ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
 /* ========================================================================
@@ -152,20 +159,22 @@ static int cmd_info(int fd)
     put_le16(wbuf, 1);
     wbuf[2] = CMD_GET_INFO;
 
-    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0) {
+    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0)
+    {
         return -1;
     }
 
     uint16_t length = get_le16(rbuf);
-    uint8_t  status = rbuf[2];
+    uint8_t status = rbuf[2];
 
-    if (status != ST_OK) {
-        fprintf(stderr, "GET_INFO status: 0x%02X (%s)\n",
-                status, status_str(status));
+    if (status != ST_OK)
+    {
+        fprintf(stderr, "GET_INFO status: 0x%02X (%s)\n", status, status_str(status));
         return -1;
     }
 
-    if (length != (uint16_t)(1 + INFO_PAYLOAD_LEN)) {
+    if (length != (uint16_t)(1 + INFO_PAYLOAD_LEN))
+    {
         fprintf(stderr,
                 "Unexpected GET_INFO payload length %u (expected %d).\n"
                 "Устройство отвечает по старому протоколу.\n",
@@ -175,28 +184,31 @@ static int cmd_info(int fd)
 
     const uint8_t *p = &rbuf[3];
 
-    uint8_t  dev_type  = p[0];
-    uint8_t  proto     = p[1];
-    uint32_t version   = get_le32(&p[2]);
-    uint32_t img_size  = get_le32(&p[6]);
-    uint8_t  flags     = p[10];
-    uint8_t  extra     = p[11];
+    uint8_t dev_type = p[0];
+    uint8_t proto = p[1];
+    uint32_t version = get_le32(&p[2]);
+    uint32_t img_size = get_le32(&p[6]);
+    uint8_t flags = p[10];
+    uint8_t extra = p[11];
 
     printf("device_type: %u (%s)\n", dev_type,
-           dev_type == DEVICE_TYPE_BOOT ? "bootloader (STM32)" :
-           dev_type == DEVICE_TYPE_APP  ? "application (STM32)" :
-           dev_type == DEVICE_TYPE_MOTOR_BOOT ? "bootloader (STM8)" :
-           dev_type == DEVICE_TYPE_MOTOR_APP  ? "application (STM8)" : "unknown");
+           dev_type == DEVICE_TYPE_BOOT         ? "bootloader (STM32)"
+           : dev_type == DEVICE_TYPE_APP        ? "application (STM32)"
+           : dev_type == DEVICE_TYPE_MOTOR_BOOT ? "bootloader (STM8)"
+           : dev_type == DEVICE_TYPE_MOTOR_APP  ? "application (STM8)"
+                                                : "unknown");
     printf("proto      : %u\n", proto);
     printf("version    : 0x%08X\n", version);
-    printf("img_size   : %u bytes (%.2f KB)\n",
-           img_size, (float)img_size / 1024.0f);
-    printf("flags      : 0x%02X (pending: %s)\n",
-           flags, (flags & INFO_FLAG_PENDING) ? "yes" : "no");
+    printf("img_size   : %u bytes (%.2f KB)\n", img_size, (float)img_size / 1024.0f);
+    printf("flags      : 0x%02X (pending: %s)\n", flags,
+           (flags & INFO_FLAG_PENDING) ? "yes" : "no");
 
-    if (dev_type == DEVICE_TYPE_APP) {
+    if (dev_type == DEVICE_TYPE_APP)
+    {
         printf("cells      : %u\n", extra);
-    } else if (dev_type == DEVICE_TYPE_MOTOR_APP) {
+    }
+    else if (dev_type == DEVICE_TYPE_MOTOR_APP)
+    {
         printf("motor_flags: 0x%02X\n", extra);
     }
 
@@ -211,33 +223,34 @@ static int cmd_status(int fd)
     put_le16(wbuf, 1);
     wbuf[2] = CMD_GET_STATUS;
 
-    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0) {
+    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0)
+    {
         return -1;
     }
 
     uint16_t length = get_le16(rbuf);
-    uint8_t  status = rbuf[2];
+    uint8_t status = rbuf[2];
 
-    printf("Response length: %u, status: 0x%02X (%s)\n",
-           length, status, status_str(status));
+    printf("Response length: %u, status: 0x%02X (%s)\n", length, status, status_str(status));
 
-    if (status != ST_OK || length < 7) {
+    if (status != ST_OK || length < 7)
+    {
         return -1;
     }
 
     const uint8_t *p = &rbuf[3];
 
-    uint8_t  last_status = p[0];
-    uint8_t  upd_state   = p[1];
-    uint32_t upd_offset  = get_le32(&p[3]);
+    uint8_t last_status = p[0];
+    uint8_t upd_state = p[1];
+    uint32_t upd_offset = get_le32(&p[3]);
 
     printf("\n=== Update Status ===\n");
-    printf("Last status   : 0x%02X (%s)\n",
-           last_status, status_str(last_status));
+    printf("Last status   : 0x%02X (%s)\n", last_status, status_str(last_status));
     printf("Update state  : %u (%s)\n", upd_state,
-           upd_state == 0 ? "IDLE" :
-           upd_state == 1 ? "ACTIVE" :
-           upd_state == 2 ? "VERIFIED" : "UNKNOWN");
+           upd_state == 0   ? "IDLE"
+           : upd_state == 1 ? "ACTIVE"
+           : upd_state == 2 ? "VERIFIED"
+                            : "UNKNOWN");
     printf("Update offset : %u bytes\n", upd_offset);
 
     return 0;
@@ -246,7 +259,8 @@ static int cmd_status(int fd)
 static uint8_t *read_file(const char *path, uint32_t *size)
 {
     FILE *f = fopen(path, "rb");
-    if (!f) {
+    if (!f)
+    {
         fprintf(stderr, "Cannot open file: %s\n", path);
         return NULL;
     }
@@ -255,20 +269,23 @@ static uint8_t *read_file(const char *path, uint32_t *size)
     long len = ftell(f);
     fseek(f, 0, SEEK_SET);
 
-    if (len <= 0) {
+    if (len <= 0)
+    {
         fprintf(stderr, "File is empty\n");
         fclose(f);
         return NULL;
     }
 
     uint8_t *buf = malloc((size_t)len);
-    if (!buf) {
+    if (!buf)
+    {
         fprintf(stderr, "Out of memory\n");
         fclose(f);
         return NULL;
     }
 
-    if (fread(buf, 1, (size_t)len, f) != (size_t)len) {
+    if (fread(buf, 1, (size_t)len, f) != (size_t)len)
+    {
         fprintf(stderr, "Read error\n");
         free(buf);
         fclose(f);
@@ -280,14 +297,13 @@ static uint8_t *read_file(const char *path, uint32_t *size)
     return buf;
 }
 
-static int cmd_flash_blob(int fd, uint8_t *data, uint32_t file_size,
-                          uint32_t version, const char *file_path)
+static int cmd_flash_blob(int fd, uint8_t *data, uint32_t file_size, uint32_t version,
+                          const char *file_path)
 {
     uint32_t crc = crc32_sw(data, file_size);
 
     printf("File    : %s\n", file_path);
-    printf("Size    : %u bytes (%.2f KB)\n",
-           file_size, (float)file_size / 1024.0f);
+    printf("Size    : %u bytes (%.2f KB)\n", file_size, (float)file_size / 1024.0f);
     printf("CRC32   : 0x%08X\n", crc);
     printf("Version : 0x%08X\n\n", version);
 
@@ -303,27 +319,30 @@ static int cmd_flash_blob(int fd, uint8_t *data, uint32_t file_size,
     put_le32(&wbuf[11], version);
 
     printf("Sending BEGIN_UPDATE...\n");
-    if (i2c_transport_write_read(fd, wbuf, 15, rbuf, I2C_READ_BUF_SIZE) < 0) {
+    if (i2c_transport_write_read(fd, wbuf, 15, rbuf, I2C_READ_BUF_SIZE) < 0)
+    {
         return -1;
     }
 
     status = rbuf[2];
     printf("Status: 0x%02X (%s)\n", status, status_str(status));
 
-    if (status != ST_OK) {
+    if (status != ST_OK)
+    {
         return -1;
     }
 
     /* ---- WRITE_DATA ---- */
-    uint32_t offset       = 0;
+    uint32_t offset = 0;
     uint32_t total_chunks = (file_size + CHUNK_SIZE - 1) / CHUNK_SIZE;
 
-    printf("Writing %u chunks (chunk size: %u bytes)...\n",
-           total_chunks, CHUNK_SIZE);
+    printf("Writing %u chunks (chunk size: %u bytes)...\n", total_chunks, CHUNK_SIZE);
 
-    for (uint32_t chunk = 0; chunk < total_chunks; chunk++) {
+    for (uint32_t chunk = 0; chunk < total_chunks; chunk++)
+    {
         uint32_t chunk_len = file_size - offset;
-        if (chunk_len > CHUNK_SIZE) {
+        if (chunk_len > CHUNK_SIZE)
+        {
             chunk_len = CHUNK_SIZE;
         }
 
@@ -333,22 +352,23 @@ static int cmd_flash_blob(int fd, uint8_t *data, uint32_t file_size,
         wbuf[7] = (uint8_t)chunk_len;
         memcpy(&wbuf[8], &data[offset], chunk_len);
 
-        if (i2c_transport_write_read(fd, wbuf, 8 + chunk_len,
-                                     rbuf, I2C_READ_BUF_SIZE) < 0) {
+        if (i2c_transport_write_read(fd, wbuf, 8 + chunk_len, rbuf, I2C_READ_BUF_SIZE) < 0)
+        {
             return -1;
         }
 
         status = rbuf[2];
-        if (status != ST_OK) {
-            fprintf(stderr, "\nWrite failed at offset %u: 0x%02X (%s)\n",
-                    offset, status, status_str(status));
+        if (status != ST_OK)
+        {
+            fprintf(stderr, "\nWrite failed at offset %u: 0x%02X (%s)\n", offset, status,
+                    status_str(status));
             return -1;
         }
 
         offset += chunk_len;
 
-        printf("\rProgress: %u / %u bytes (%.1f%%)",
-               offset, file_size, (float)offset / (float)file_size * 100.0f);
+        printf("\rProgress: %u / %u bytes (%.1f%%)", offset, file_size,
+               (float)offset / (float)file_size * 100.0f);
         fflush(stdout);
     }
 
@@ -359,14 +379,16 @@ static int cmd_flash_blob(int fd, uint8_t *data, uint32_t file_size,
     wbuf[2] = CMD_VERIFY_UPDATE;
 
     printf("Verifying...\n");
-    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0) {
+    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0)
+    {
         return -1;
     }
 
     status = rbuf[2];
     printf("Verify status: 0x%02X (%s)\n", status, status_str(status));
 
-    if (status != ST_OK) {
+    if (status != ST_OK)
+    {
         return -1;
     }
 
@@ -375,14 +397,16 @@ static int cmd_flash_blob(int fd, uint8_t *data, uint32_t file_size,
     wbuf[2] = CMD_COMMIT;
 
     printf("Committing...\n");
-    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0) {
+    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0)
+    {
         return -1;
     }
 
     status = rbuf[2];
     printf("Commit status: 0x%02X (%s)\n", status, status_str(status));
 
-    if (status != ST_OK) {
+    if (status != ST_OK)
+    {
         return -1;
     }
 
@@ -395,7 +419,8 @@ static int cmd_flash(int fd, const char *file_path, uint32_t version)
 {
     uint32_t size;
     uint8_t *data = read_file(file_path, &size);
-    if (!data) {
+    if (!data)
+    {
         return -1;
     }
     int rc = cmd_flash_blob(fd, data, size, version, file_path);
@@ -413,13 +438,17 @@ static int cmd_enter_update(int fd)
 
     printf("Отправка команды входа в режим обновления...\n");
 
-    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0) {
+    if (i2c_transport_write_read(fd, wbuf, 3, rbuf, I2C_READ_BUF_SIZE) < 0)
+    {
         /* Прошивка могла перезагрузиться до отправки ответа */
         printf("Ответ не получен (возможно, устройство уже перезагружается)\n");
-    } else {
+    }
+    else
+    {
         uint8_t status = rbuf[2];
         printf("Статус: 0x%02X (%s)\n", status, status_str(status));
-        if (status != ST_OK) {
+        if (status != ST_OK)
+        {
             return -1;
         }
     }
@@ -440,7 +469,8 @@ static int cmd_reset(int fd)
 
     printf("Sending RESET command...\n");
 
-    if (i2c_transport_write_only(fd, wbuf, 3) < 0) {
+    if (i2c_transport_write_only(fd, wbuf, 3) < 0)
+    {
         return -1;
     }
 
@@ -456,7 +486,7 @@ static int cmd_reset(int fd)
  * ======================================================================== */
 
 /* Образ приложения STM8 всегда начинается с базового адреса слота */
-#define MOTOR_APP_BASE   0x9200u
+#define MOTOR_APP_BASE 0x9200u
 
 /*
  * Разбор Intel HEX (.ihx, вывод SDCC/ASIX) в линейный образ.
@@ -466,49 +496,75 @@ static int cmd_reset(int fd)
 static uint8_t *read_ihx(const char *path, uint32_t *base, uint32_t *size)
 {
     FILE *f = fopen(path, "r");
-    if (!f) { fprintf(stderr, "Cannot open file: %s\n", path); return NULL; }
+    if (!f)
+    {
+        fprintf(stderr, "Cannot open file: %s\n", path);
+        return NULL;
+    }
 
     uint32_t lo = 0xFFFFFFFFu, hi = 0;
-    uint32_t seg_base = 0;   /* для расширенных записей 04 */
+    uint32_t seg_base = 0; /* для расширенных записей 04 */
     char line[1024];
-    uint8_t *tmp = NULL;     /* второй проход упрощён: два прохода */
+    uint8_t *tmp = NULL; /* второй проход упрощён: два прохода */
 
-    for (int pass = 0; pass < 2; pass++) {
+    for (int pass = 0; pass < 2; pass++)
+    {
         rewind(f);
-        if (pass == 1) {
-            if (lo == 0xFFFFFFFFu || hi == 0 || hi < lo) {
+        if (pass == 1)
+        {
+            if (lo == 0xFFFFFFFFu || hi == 0 || hi < lo)
+            {
                 fprintf(stderr, "Пустой или битый .ihx: %s\n", path);
                 return NULL;
             }
             uint32_t n = hi - lo + 1;
             tmp = malloc(n);
-            if (!tmp) { fclose(f); return NULL; }
-            memset(tmp, 0x00, n);   /* стёртое состояние STM8 = 0x00 */
+            if (!tmp)
+            {
+                fclose(f);
+                return NULL;
+            }
+            memset(tmp, 0x00, n); /* стёртое состояние STM8 = 0x00 */
             seg_base = 0;
         }
 
-        while (fgets(line, sizeof(line), f)) {
-            if (line[0] != ':') continue;
+        while (fgets(line, sizeof(line), f))
+        {
+            if (line[0] != ':')
+                continue;
             int ln = (int)strtol(line + 1, NULL, 16);
             int addr = (int)strtol(line + 3, NULL, 16);
-            int typ  = (int)strtol(line + 7, NULL, 16);
-            if (typ == 5) break;
-            if (typ != 0 && typ != 1 && typ != 2 && typ != 4) continue;
+            int typ = (int)strtol(line + 7, NULL, 16);
+            if (typ == 5)
+                break;
+            if (typ != 0 && typ != 1 && typ != 2 && typ != 4)
+                continue;
             uint32_t a;
-            if (typ == 0) {
+            if (typ == 0)
+            {
                 a = seg_base + (uint32_t)addr;
-                for (int i = 0; i < ln; i++) {
+                for (int i = 0; i < ln; i++)
+                {
                     uint32_t v = (uint32_t)strtol(line + 9 + 2 * i, NULL, 16);
-                    if (pass == 0) {
-                        if (a + i < lo) lo = a + i;
-                        if (a + i > hi) hi = a + i;
-                    } else {
+                    if (pass == 0)
+                    {
+                        if (a + i < lo)
+                            lo = a + i;
+                        if (a + i > hi)
+                            hi = a + i;
+                    }
+                    else
+                    {
                         tmp[a + i - lo] = (uint8_t)v;
                     }
                 }
-            } else if (typ == 2) {       /* extended segment address */
+            }
+            else if (typ == 2)
+            { /* extended segment address */
                 seg_base = ((uint32_t)strtol(line + 9, NULL, 16)) << 4;
-            } else if (typ == 4) {       /* extended linear address */
+            }
+            else if (typ == 4)
+            { /* extended linear address */
                 seg_base = ((uint32_t)strtol(line + 9, NULL, 16)) << 16;
             }
         }
@@ -528,22 +584,28 @@ static int cmd_flash_motor(int fd, const char *file_path, uint32_t version)
     uint8_t *blob;
     uint32_t size;
 
-    if (strstr(file_path, ".ihx")) {
+    if (strstr(file_path, ".ihx"))
+    {
         uint32_t base;
         blob = read_ihx(file_path, &base, &size);
-        if (!blob) return -1;
-        if (base != MOTOR_APP_BASE) {
+        if (!blob)
+            return -1;
+        if (base != MOTOR_APP_BASE)
+        {
             fprintf(stderr,
-                "Образ .ihx начинается с 0x%04X, а слот приложения — 0x%04X.\n"
-                "Пересоберите приложение: make (ld: HOME=0x9200).\n",
-                base, MOTOR_APP_BASE);
+                    "Образ .ihx начинается с 0x%04X, а слот приложения — 0x%04X.\n"
+                    "Пересоберите приложение: make (ld: HOME=0x9200).\n",
+                    base, MOTOR_APP_BASE);
             free(blob);
             return -1;
         }
         printf("Образ .ihx: база 0x%04X, %u байт\n", base, size);
-    } else {
+    }
+    else
+    {
         blob = read_file(file_path, &size);
-        if (!blob) return -1;
+        if (!blob)
+            return -1;
     }
 
     int rc = cmd_flash_blob(fd, blob, size, version, file_path);
@@ -558,21 +620,23 @@ static int cmd_flash_motor(int fd, const char *file_path, uint32_t version)
 static int motor_flash_stlink(const char *file_path, bool verify)
 {
     const char *stm8flash_path = getenv("STM8FLASH");
-    if (!stm8flash_path || !stm8flash_path[0]) {
+    if (!stm8flash_path || !stm8flash_path[0])
+    {
         stm8flash_path = "stm8flash";
     }
 
     /* -w записывает образ; при необходимости отдельно проверяем через -v. */
     pid_t pid = fork();
-    if (pid < 0) {
+    if (pid < 0)
+    {
         fprintf(stderr, "fork: %s\n", strerror(errno));
         return -1;
     }
 
-    if (pid == 0) {
-        execlp(stm8flash_path, stm8flash_path,
-               "-c", "stlinkv2", "-p", "stm8s103f3",
-               "-w", file_path, (char *)NULL);
+    if (pid == 0)
+    {
+        execlp(stm8flash_path, stm8flash_path, "-c", "stlinkv2", "-p", "stm8s103f3", "-w",
+               file_path, (char *)NULL);
         fprintf(stderr,
                 "Не удалось запустить %s: %s\n"
                 "Установите stm8flash или задайте путь в переменной "
@@ -582,44 +646,49 @@ static int motor_flash_stlink(const char *file_path, bool verify)
     }
 
     int wstatus = 0;
-    if (waitpid(pid, &wstatus, 0) < 0) {
+    if (waitpid(pid, &wstatus, 0) < 0)
+    {
         fprintf(stderr, "waitpid: %s\n", strerror(errno));
         return -1;
     }
 
-    if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
+    if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0)
+    {
         fprintf(stderr, "stm8flash завершился с ошибкой\n");
         return -1;
     }
 
     printf("STM8: образ %s записан\n", file_path);
 
-    if (!verify) {
+    if (!verify)
+    {
         return 0;
     }
 
     pid = fork();
-    if (pid < 0) {
+    if (pid < 0)
+    {
         fprintf(stderr, "fork: %s\n", strerror(errno));
         return -1;
     }
 
-    if (pid == 0) {
-        execlp(stm8flash_path, stm8flash_path,
-               "-c", "stlinkv2", "-p", "stm8s103f3",
-               "-v", file_path, (char *)NULL);
-        fprintf(stderr, "Не удалось запустить %s: %s\n",
-                stm8flash_path, strerror(errno));
+    if (pid == 0)
+    {
+        execlp(stm8flash_path, stm8flash_path, "-c", "stlinkv2", "-p", "stm8s103f3", "-v",
+               file_path, (char *)NULL);
+        fprintf(stderr, "Не удалось запустить %s: %s\n", stm8flash_path, strerror(errno));
         _exit(127);
     }
 
     wstatus = 0;
-    if (waitpid(pid, &wstatus, 0) < 0) {
+    if (waitpid(pid, &wstatus, 0) < 0)
+    {
         fprintf(stderr, "waitpid: %s\n", strerror(errno));
         return -1;
     }
 
-    if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0) {
+    if (!WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0)
+    {
         fprintf(stderr, "STM8: верификация завершилась с ошибкой\n");
         return -1;
     }
@@ -634,25 +703,23 @@ static int motor_flash_stlink(const char *file_path, bool verify)
 
 static void print_usage(const char *prog)
 {
-    printf(
-        "Унифицированная утилита прошивки\n\n"
-        "Использование:\n"
-        "  %s ec <i2c-dev> info                       - информация (загрузчик или прошивка)\n"
-        "  %s ec <i2c-dev> status                     - статус обновления (загрузчик)\n"
-        "  %s ec <i2c-dev> flash <file.bin> <version> - прошивка STM32 через загрузчик\n"
-        "  %s ec <i2c-dev> enter-update               - перевод прошивки в режим обновления\n"
-        "  %s ec <i2c-dev> reset                      - перезагрузка устройства\n"
-        "  %s motor <i2c-dev> info|status                - состояние STM8 по I2C (addr 0x39)\n"
-        "  %s motor <i2c-dev> flash <file.ihx> <ver>    - OTA-прошивка STM8 по I2C\n"
-        "  %s motor <i2c-dev> enter-update|reset        - вход в загрузчик / сброс\n"
-        "  %s motor stlink <file.ihx> [--verify]        - первичная прошивка (ST-Link)\n"
-        "\nПримеры:\n"
-        "  %s ec /dev/i2c-7 info\n"
-        "  %s ec /dev/i2c-7 flash build/app.bin 0x00010000\n"
-        "  %s motor /dev/i2c-7 flash build/motor_i2c_slave.ihx 0x00010000\n"
-        "  %s motor stlink build/motor_i2c_slave.ihx --verify\n",
-        prog, prog, prog, prog, prog, prog,
-        prog, prog, prog, prog, prog, prog, prog);
+    printf("Унифицированная утилита прошивки\n\n"
+           "Использование:\n"
+           "  %s ec <i2c-dev> info                       - информация (загрузчик или прошивка)\n"
+           "  %s ec <i2c-dev> status                     - статус обновления (загрузчик)\n"
+           "  %s ec <i2c-dev> flash <file.bin> <version> - прошивка STM32 через загрузчик\n"
+           "  %s ec <i2c-dev> enter-update               - перевод прошивки в режим обновления\n"
+           "  %s ec <i2c-dev> reset                      - перезагрузка устройства\n"
+           "  %s motor <i2c-dev> info|status                - состояние STM8 по I2C (addr 0x39)\n"
+           "  %s motor <i2c-dev> flash <file.ihx> <ver>    - OTA-прошивка STM8 по I2C\n"
+           "  %s motor <i2c-dev> enter-update|reset        - вход в загрузчик / сброс\n"
+           "  %s motor stlink <file.ihx> [--verify]        - первичная прошивка (ST-Link)\n"
+           "\nПримеры:\n"
+           "  %s ec /dev/i2c-7 info\n"
+           "  %s ec /dev/i2c-7 flash build/app.bin 0x00010000\n"
+           "  %s motor /dev/i2c-7 flash build/motor_i2c_slave.ihx 0x00010000\n"
+           "  %s motor stlink build/motor_i2c_slave.ihx --verify\n",
+           prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog, prog);
 }
 
 /* ========================================================================
@@ -661,7 +728,8 @@ static void print_usage(const char *prog)
 
 int main(int argc, char **argv)
 {
-    if (argc < 2) {
+    if (argc < 2)
+    {
         print_usage(argv[0]);
         return 1;
     }
@@ -669,44 +737,61 @@ int main(int argc, char **argv)
     const char *target = argv[1];
 
     /* ---------------- Цель: motor (STM8) ---------------- */
-    if (strcmp(target, "motor") == 0) {
+    if (strcmp(target, "motor") == 0)
+    {
         /* Первичная прошивка по ST-Link (SWIM) */
-        if (argc >= 4 && strcmp(argv[2], "stlink") == 0) {
-            bool verify = (argc >= 5 &&
-                           strcmp(argv[4], "--verify") == 0);
+        if (argc >= 4 && strcmp(argv[2], "stlink") == 0)
+        {
+            bool verify = (argc >= 5 && strcmp(argv[4], "--verify") == 0);
             return motor_flash_stlink(argv[3], verify) == 0 ? 0 : 1;
         }
 
         /* Обмен по I2C: тот же протокол v2, адрес 0x39 */
-        if (argc >= 4) {
-            const char *device  = argv[2];
+        if (argc >= 4)
+        {
+            const char *device = argv[2];
             const char *command = argv[3];
 
             int fd = i2c_transport_open(device, I2C_ADDR_MOTOR);
-            if (fd < 0) {
+            if (fd < 0)
+            {
                 return 1;
             }
 
             int ret = -1;
 
-            if (strcmp(command, "info") == 0) {
+            if (strcmp(command, "info") == 0)
+            {
                 ret = cmd_info(fd);
-            } else if (strcmp(command, "status") == 0) {
+            }
+            else if (strcmp(command, "status") == 0)
+            {
                 ret = cmd_status(fd);
-            } else if (strcmp(command, "flash") == 0) {
-                if (argc < 6) {
+            }
+            else if (strcmp(command, "flash") == 0)
+            {
+                if (argc < 6)
+                {
                     fprintf(stderr,
-                        "Usage: %s motor <device> flash <file.ihx|file.bin> <version>\n",
-                        argv[0]);
-                } else {
+                            "Usage: %s motor <device> flash <file.ihx|file.bin> <version>\n",
+                            argv[0]);
+                }
+                else
+                {
                     uint32_t version = (uint32_t)strtoul(argv[5], NULL, 0);
                     ret = cmd_flash_motor(fd, argv[4], version);
                 }
-            } else if (strcmp(command, "enter-update") == 0) {
+            }
+            else if (strcmp(command, "enter-update") == 0)
+            {
                 ret = cmd_enter_update(fd);
-            } else if (strcmp(command, "reset") == 0) {
+            }
+            else if (strcmp(command, "reset") == 0)
+            {
                 ret = cmd_reset(fd);
-            } else {
+            }
+            else
+            {
                 fprintf(stderr, "Unknown motor command: %s\n\n", command);
                 print_usage(argv[0]);
             }
@@ -720,45 +805,55 @@ int main(int argc, char **argv)
     }
 
     /* ---------------- Цель: ec (STM32, I2C) ---------------- */
-    if (strcmp(target, "ec") == 0) {
-        if (argc < 4) {
+    if (strcmp(target, "ec") == 0)
+    {
+        if (argc < 4)
+        {
             print_usage(argv[0]);
             return 1;
         }
 
-        const char *device  = argv[2];
+        const char *device = argv[2];
         const char *command = argv[3];
 
         int fd = i2c_transport_open(device, I2C_ADDR7);
-        if (fd < 0) {
+        if (fd < 0)
+        {
             return 1;
         }
 
         int ret = -1;
 
-        if (strcmp(command, "info") == 0) {
+        if (strcmp(command, "info") == 0)
+        {
             ret = cmd_info(fd);
-
-        } else if (strcmp(command, "status") == 0) {
+        }
+        else if (strcmp(command, "status") == 0)
+        {
             ret = cmd_status(fd);
-
-        } else if (strcmp(command, "flash") == 0) {
-            if (argc < 6) {
-                fprintf(stderr,
-                        "Usage: %s ec <device> flash <file> <version>\n",
-                        argv[0]);
-            } else {
+        }
+        else if (strcmp(command, "flash") == 0)
+        {
+            if (argc < 6)
+            {
+                fprintf(stderr, "Usage: %s ec <device> flash <file> <version>\n", argv[0]);
+            }
+            else
+            {
                 uint32_t version = (uint32_t)strtoul(argv[5], NULL, 0);
                 ret = cmd_flash(fd, argv[4], version);
             }
-
-        } else if (strcmp(command, "enter-update") == 0) {
+        }
+        else if (strcmp(command, "enter-update") == 0)
+        {
             ret = cmd_enter_update(fd);
-
-        } else if (strcmp(command, "reset") == 0) {
+        }
+        else if (strcmp(command, "reset") == 0)
+        {
             ret = cmd_reset(fd);
-
-        } else {
+        }
+        else
+        {
             fprintf(stderr, "Unknown ec command: %s\n\n", command);
             print_usage(argv[0]);
         }
