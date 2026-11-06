@@ -42,8 +42,12 @@ set_target_properties(app.elf PROPERTIES
 add_custom_command(TARGET app.elf POST_BUILD
     COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:app.elf> ${CMAKE_BINARY_DIR}/app.hex
     COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:app.elf> ${CMAKE_BINARY_DIR}/app.bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/app.bin
+            ${CMAKE_BINARY_DIR}/app-${FW_VERSION_STRING}.bin
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/app.hex
+            ${CMAKE_BINARY_DIR}/app-${FW_VERSION_STRING}.hex
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:app.elf>
-    COMMENT "Формирование app.hex / app.bin"
+    COMMENT "Формирование app.hex / app.bin и app-${FW_VERSION_STRING}.bin/.hex"
 )
 
 # ============================================================================

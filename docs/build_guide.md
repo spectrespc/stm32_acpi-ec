@@ -27,16 +27,39 @@ cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake -DMCU=CBT6
 cmake --build build
 ```
 
+**OKO.** На стенде установлен STM32F103**CBT6** (128 КиБ, слот приложения
+120 КиБ); загрузчик принимает образы до 120 КиБ. Собирайте приложение с
+`-DMCU=CBT6`: сборка C8T6 запускается, но читает метаданные из страниц в
+конце 64 КиБ, тогда как загрузчик CBT6 пишет их в конец 128 КиБ, поэтому
+`oko-ec info` показывает `img_size=0`. Рабочие образы OKO:
+`output/bench/stm32/app-1.0.0.bin` и `app-1.0.1.bin` (по 2324 Б).
+
 Результат:
 
 ```
 build/bootloader.elf|hex|bin
 build/app.elf|hex|bin
+build/app-<версия>.bin|hex      # копии с версией в имени
 build/bootloader.map, build/app.map
 ```
 
+`app.bin`/`app.hex` остаются алиасами для ST-Link и
+`flash-app-i2c`; в WebUI `/api/flash` нужно загружать имя с версией
+(`app-1.0.1.bin`) — сервер берёт версию из имени файла.
+
 Версия прошивки берётся из `git describe --tags` (иначе 1.0.0 →
-`0x00010000`) и генерируется в `build/generated/version.h`.
+`0x00010000`) и генерируется в `build/generated/version.h`. Версию можно
+задать на этапе конфигурации:
+
+```bash
+cmake -B build-101 -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake \
+      -DFW_VERSION_STRING=1.0.1     # FW_VERSION = 0x00010001
+```
+
+`FW_VERSION_STRING` — кэш-переменная. В вендоренном дереве без `.git`
+(как `project/app/stm32_acpi-ec` в OKO) значение из `-D` используется
+напрямую; в git-чекауте с тегами `v*.*.*` версия из `git describe` имеет
+приоритет. Проверка: `grep FW_VERSION build-101/generated/version.h`.
 
 ## Прошивка
 
@@ -82,7 +105,7 @@ cmake --build build_host
 ```bash
 bootloader_tool ec /dev/i2c-7 info
 bootloader_tool ec /dev/i2c-7 status
-bootloader_tool ec /dev/i2c-7 flash build/app.bin 0x00010000
+bootloader_tool ec /dev/i2c-7 flash build/app-1.0.0.bin 0x00010000
 bootloader_tool ec /dev/i2c-7 enter-update
 bootloader_tool ec /dev/i2c-7 reset
 bootloader_tool motor /dev/i2c-7 flash motor.ihx 0x00010000

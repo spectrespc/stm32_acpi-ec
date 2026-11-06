@@ -36,10 +36,10 @@ set(BOOT_FLASH_LENGTH 8K)
 set(APP_FLASH_ORIGIN 0x08002000)
 
 # ============================================================================
-# Версия прошивки из VCS (git describe) с запасным значением 0.1.0
+# Версия прошивки из VCS (git describe) с запасным значением 1.0.0
 # ============================================================================
 
-set(FW_VERSION_STRING "1.0.0")
+set(FW_VERSION_STRING "1.0.0" CACHE STRING "Firmware version (major.minor.patch)")
 
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
