@@ -160,7 +160,7 @@ void process_i2c_request(void)
             flash_erase_page(APP_ADDR + offset);
         }
 
-        uint8_t tmp[PROTO_MAX_DATA_LEN];
+        uint8_t tmp[PROTO_MAX_DATA_LEN] = {0};
 
         for (uint16_t i = 0; i < dlen; i++)
         {
@@ -275,6 +275,14 @@ void process_i2c_request(void)
     {
         /* Подтверждение того, что устройство уже в режиме обновления. */
         set_status(ST_OK);
+        break;
+    }
+
+    case CMD_GET_POWER:
+    case CMD_SET_POWER:
+    {
+        /* Управление питанием есть только в приложении. */
+        set_status(ST_ERR_UNSUPPORTED);
         break;
     }
 

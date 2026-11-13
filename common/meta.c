@@ -72,20 +72,20 @@ void meta_finalize(MetaConfig *cfg)
 
 static bool meta_write_page(uint32_t addr, const MetaConfig *cfg)
 {
+    /* C031 программирует double-word (8 байт), F103 — полуслова.
+     * Дополняем структуру до 32 байт значением 0xFF: обе платформы
+     * получают корректную последовательность программирования. */
+    uint8_t buf[32];
+
+    _Static_assert(sizeof(MetaConfig) <= sizeof(buf), "MetaConfig must fit in 32 bytes");
+
+    memset(buf, 0xFF, sizeof(buf));
+    memcpy(buf, cfg, sizeof(*cfg));
+
     flash_unlock();
     flash_erase_page_raw(addr);
 
-    const uint16_t *p = (const uint16_t *)cfg;
-    bool ok = true;
-
-    for (uint32_t i = 0; i < sizeof(MetaConfig) / 2U; i++)
-    {
-        if (flash_program_halfword_raw(addr + i * 2U, p[i]) != 0)
-        {
-            ok = false;
-            break;
-        }
-    }
+    bool ok = flash_program_buffer_raw(addr, buf, (uint16_t)sizeof(buf)) == 0;
 
     flash_lock();
 

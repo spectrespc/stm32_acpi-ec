@@ -7,6 +7,7 @@
 #include "boot.h"
 #include "boot_config.h"
 #include "crc.h"
+#include "i2c.h"
 #include "meta.h"
 #include "system.h"
 
@@ -27,8 +28,10 @@ bool app_validate(void)
     uint32_t sp = *(__IO uint32_t *)APP_ADDR;
     uint32_t pc = *(__IO uint32_t *)(APP_ADDR + 4U);
 
-    /* Initial SP должен находиться в RAM 20 KB */
-    if (sp < 0x20000000UL || sp > 0x20005000UL)
+    /* Initial SP должен находиться в доступной RAM: верхние 16 байт
+     * зарезервированы под __ec_update_flag, SP должен быть выровнен
+     * на 8 байт (AAPCS). */
+    if (sp < EC_RAM_BASE || sp > (EC_RAM_TOP - 16U) || (sp & 7U) != 0U)
     {
         return false;
     }
@@ -59,8 +62,7 @@ void boot_app(uint32_t addr)
      * Выключаем I2C, который использовал bootloader.
      * Пин питания host-устройства специально не трогаем.
      */
-    I2C1->CR1 &= ~I2C_CR1_PE;
-    RCC->APB1ENR &= ~RCC_APB1ENR_I2C1EN;
+    i2c_deinit();
 
     system_stop_systick();
     system_clear_irqs();

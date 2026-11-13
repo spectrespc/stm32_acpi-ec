@@ -84,6 +84,52 @@ void i2c_init(void)
     NVIC_EnableIRQ(I2C1_ER_IRQn);
 }
 
+void i2c_set_enabled(bool enabled)
+{
+    if (enabled)
+    {
+        I2C1->CR1 |= I2C_CR1_PE;
+        I2C1->CR1 |= I2C_CR1_ACK;
+    }
+    else
+    {
+        I2C1->CR1 &= ~I2C_CR1_PE;
+    }
+}
+
+void i2c_deinit(void)
+{
+    I2C1->CR1 &= ~I2C_CR1_PE;
+    RCC->APB1ENR &= ~RCC_APB1ENR_I2C1EN;
+}
+
+void i2c_recover(void)
+{
+    /* F103 не участвует в таймерном освобождении шины (см.
+     * i2c_bus_watchdog_supported); полная переинициализация —
+     * безопасный вариант для ручного вызова. */
+    i2c_init();
+}
+
+void i2c_get_bus_state(i2c_bus_state_t *state)
+{
+    if (state == NULL)
+    {
+        return;
+    }
+
+    state->enabled = (I2C1->CR1 & I2C_CR1_PE) != 0U;
+    state->busy = (I2C1->SR2 & I2C_SR2_BUSY) != 0U;
+    state->tx_active = (I2C1->SR2 & I2C_SR2_TRA) != 0U;
+    state->tx_pos = tx_pos;
+    state->rx_count = rx_count;
+}
+
+bool i2c_bus_watchdog_supported(void)
+{
+    return false;
+}
+
 void i2c_pause(void)
 {
 #ifdef BOOT_BUILD
@@ -175,4 +221,10 @@ void I2C1_ER_IRQHandler(void)
     I2C1->SR1 &= ~(I2C_SR1_BERR | I2C_SR1_ARLO | I2C_SR1_OVR | I2C_SR1_AF);
 
     I2C1->CR1 |= I2C_CR1_ACK;
+}
+
+bool i2c_take_wake_flag(void)
+{
+    /* На F103 пробуждение по адресу I2C не используется. */
+    return false;
 }

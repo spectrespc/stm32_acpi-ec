@@ -11,7 +11,9 @@
 #include "app_config.h"
 #include "battery.h"
 #include "i2c.h"
+#include "i2c_debug.h"
 #include "meta.h"
+#include "power_task.h"
 #include "protocol.h"
 #include "system.h"
 
@@ -78,6 +80,85 @@ static void handle_get_cell_voltages(void)
 }
 
 /*
+ * Команда 0x20 — GET_POWER.
+ * 8 байт состояния питания (см. docs/protocol.md, v3).
+ */
+static void handle_get_power(uint16_t payload_len)
+{
+    if (payload_len != 0U)
+    {
+        i2c_set_status(ST_ERR_LEN);
+        return;
+    }
+
+    uint8_t out[POWER_PAYLOAD_LEN];
+
+    power_task_get_status(out);
+    i2c_set_response(ST_OK, out, sizeof(out));
+}
+
+/*
+ * Команда 0x21 — SET_POWER.
+ * payload: [0] host_state, [1] ack_flags.
+ */
+static void handle_set_power(uint16_t payload_len)
+{
+    if (payload_len != POWER_SET_PAYLOAD_LEN)
+    {
+        i2c_set_status(ST_ERR_LEN);
+        return;
+    }
+
+    if (rx_buf[3] > (uint8_t)HOST_STATE_ERROR)
+    {
+        i2c_set_status(ST_ERR_PARAM);
+        return;
+    }
+
+    power_task_set_host_state(rx_buf[3], rx_buf[4]);
+    i2c_set_status(ST_OK);
+}
+
+/*
+ * Команда 0x28 — GET_DEBUG.
+ * Счётчики и снимки I2C; только DEBUG_BUILD, иначе ST_ERR_UNSUPPORTED.
+ */
+static void handle_get_debug(void)
+{
+#ifdef DEBUG_BUILD
+    uint8_t out[I2C_DEBUG_PAYLOAD_LEN];
+
+    uint8_t len = i2c_debug_snapshot(out, (uint8_t)sizeof(out));
+
+    i2c_set_response(ST_OK, out, len);
+#else
+    i2c_set_status(ST_ERR_UNSUPPORTED);
+#endif
+}
+
+/*
+ * Команда 0x29 — DEBUG_HOLD_SCL.
+ * payload: [0] 1 — следующий ADDR(read) обслужить без TXDR (эталонное
+ * зависание), 0 — выключить режим.
+ */
+static void handle_debug_hold_scl(uint16_t payload_len)
+{
+#ifdef DEBUG_BUILD
+    if (payload_len != 1U)
+    {
+        i2c_set_status(ST_ERR_LEN);
+        return;
+    }
+
+    i2c_debug_hold_scl(rx_buf[3] != 0U);
+    i2c_set_status(ST_OK);
+#else
+    (void)payload_len;
+    i2c_set_status(ST_ERR_UNSUPPORTED);
+#endif
+}
+
+/*
  * Команда 0x12 — GET_TEMPERATURE.
  */
 static void handle_get_temperature(void)
@@ -128,7 +209,7 @@ static void handle_enter_update_mode(void)
     i2c_set_status(ST_OK);
     drain_delay();
 
-    volatile uint32_t *flag = (volatile uint32_t *)UPDATE_FLAG_ADDR;
+    volatile uint32_t *flag = &__ec_update_flag;
     *flag = UPDATE_MAGIC;
 
     system_reset();
@@ -142,14 +223,19 @@ void app_process_i2c_request(void)
 {
     uint16_t frame_len;
     uint8_t cmd;
+    uint16_t payload_len;
 
     if (!protocol_parse_request((const uint8_t *)rx_buf, rx_count, I2C_RX_BUF_SIZE, &frame_len,
-                                &cmd, NULL))
+                                &cmd, &payload_len))
     {
         (void)frame_len;
         i2c_set_status(ST_ERR_LEN);
         return;
     }
+
+    /* Любой валидный кадр — признак живого хоста: сбрасывает
+     * таймаут тишины (link_lost) и пробуждает из SUSPENDED. */
+    power_task_host_frame();
 
     switch (cmd)
     {
@@ -168,6 +254,22 @@ void app_process_i2c_request(void)
 
     case BAT_CMD_GET_TEMP:
         handle_get_temperature();
+        break;
+
+    case CMD_GET_POWER:
+        handle_get_power(payload_len);
+        break;
+
+    case CMD_SET_POWER:
+        handle_set_power(payload_len);
+        break;
+
+    case CMD_GET_DEBUG:
+        handle_get_debug();
+        break;
+
+    case CMD_DEBUG_HOLD_SCL:
+        handle_debug_hold_scl(payload_len);
         break;
 
     case CMD_RESET:

@@ -1,6 +1,7 @@
 # boot/CMakeLists.txt
 #
-# Образ загрузчика: 8 KB @ 0x08000000 (stm32f103_boot.ld).
+# Образ загрузчика: 8 KB @ 0x08000000 (stm32f103_boot.ld или
+# stm32c031_boot.ld — выбирается MCU).
 
 add_executable(boot.elf
     src/main.c
@@ -8,8 +9,14 @@ add_executable(boot.elf
     src/request.c
 )
 
-stm32f103_configure(boot.elf)
+ec_configure(boot.elf)
 target_compile_definitions(boot.elf PRIVATE BOOT_BUILD)
+
+# Диагностическая сборка: самопроверка Flash вместо запуска приложения.
+option(BOOT_SELFTEST "Загрузчик: BOOT_SELFTEST — проверить erase/program/read" OFF)
+if(BOOT_SELFTEST)
+    target_compile_definitions(boot.elf PRIVATE BOOT_SELFTEST)
+endif()
 
 target_include_directories(boot.elf PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
@@ -17,14 +24,15 @@ target_include_directories(boot.elf PRIVATE
 )
 
 target_link_libraries(boot.elf PRIVATE
-    platform_stm32f103
+    platform
     hal_boot
     common
 )
 
 target_link_options(boot.elf PRIVATE
-    ${STM32F103_LINK_FLAGS}
+    ${EC_LINK_FLAGS}
     -T ${BOOT_LDSCRIPT}
+    ${EC_RAM_LINK_DEFS}
     -Wl,--defsym=FLASH_LEN=${BOOT_FLASH_LENGTH}
     -Wl,-Map=${CMAKE_BINARY_DIR}/bootloader.map
 )
@@ -49,10 +57,18 @@ add_custom_command(TARGET boot.elf POST_BUILD
 # Прошивка
 # ============================================================================
 
-add_custom_target(flash-boot
-    COMMAND ${OPENOCD_EXECUTABLE}
+if(MCU STREQUAL "C031x6")
+    set(FLASH_OPENOCD_ARGS -f ${CMAKE_SOURCE_DIR}/scripts/openocd_c0.cfg)
+    set(ERASE_OPENOCD_COMMAND "stm32l4x mass_erase 0")
+else()
+    set(FLASH_OPENOCD_ARGS
         -f ${OPENOCD_SCRIPTS}/interface/stlink.cfg
-        -f ${OPENOCD_SCRIPTS}/target/stm32f1x.cfg
+        -f ${OPENOCD_SCRIPTS}/target/stm32f1x.cfg)
+    set(ERASE_OPENOCD_COMMAND "stm32f1x mass_erase 0")
+endif()
+
+add_custom_target(flash-boot
+    COMMAND ${OPENOCD_EXECUTABLE} ${FLASH_OPENOCD_ARGS}
         -c "program $<TARGET_FILE:boot.elf> verify reset exit"
     DEPENDS boot.elf
     COMMENT "Прошивка загрузчика через ST-Link v2 (OpenOCD)"
@@ -60,10 +76,8 @@ add_custom_target(flash-boot
 )
 
 add_custom_target(erase-boot
-    COMMAND ${OPENOCD_EXECUTABLE}
-        -f ${OPENOCD_SCRIPTS}/interface/stlink.cfg
-        -f ${OPENOCD_SCRIPTS}/target/stm32f1x.cfg
-        -c "init" -c "halt" -c "stm32f1x mass_erase 0" -c "exit"
+    COMMAND ${OPENOCD_EXECUTABLE} ${FLASH_OPENOCD_ARGS}
+        -c "init" -c "halt" -c "${ERASE_OPENOCD_COMMAND}" -c "exit"
     COMMENT "Полное стирание Flash (загрузчик + приложение + метаданные)"
     USES_TERMINAL
 )

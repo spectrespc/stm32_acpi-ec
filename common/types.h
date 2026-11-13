@@ -13,7 +13,7 @@ typedef enum
     DEVICE_TYPE_APP = 2   /* приложение STM32 */
 } device_type_t;
 
-/* Статусы протокола v2 (совпадают с утилитой прошивки). */
+/* Статусы протокола v3 (совпадают с утилитой прошивки). */
 typedef enum
 {
     ST_OK = 0x00,
@@ -23,7 +23,8 @@ typedef enum
     ST_ERR_FLASH = 0x05,
     ST_ERR_CRC = 0x06,
     ST_ERR_SEQ = 0x07,
-    ST_ERR_LEN = 0x08
+    ST_ERR_LEN = 0x08,
+    ST_ERR_UNSUPPORTED = 0xFF
 } protocol_status_t;
 
 /* Состояние процесса обновления. */

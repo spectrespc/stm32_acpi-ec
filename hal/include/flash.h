@@ -1,6 +1,9 @@
-/* hal/flash.h
+/* hal/include/flash.h
  *
- * Операции с внутренней Flash STM32F103 (medium density, страница 1 KB).
+ * Операции с внутренней Flash. Семейство MCU задаёт размер страницы
+ * (FLASH_PAGE_SIZE в board_family.h) и способ программирования:
+ *   - F103: полуслова по 2 байта, страница 1 KB;
+ *   - C031: double-word по 8 байт, страница 2 KB.
  *
  * Функции *_raw не управляют ни блокировкой Flash, ни паузой I2C —
  * вызывающий код сам решает, когда разблокировать Flash и приостановить
@@ -28,12 +31,15 @@ void flash_unlock(void);
 void flash_lock(void);
 
 int flash_erase_page_raw(uint32_t addr);
-int flash_program_halfword_raw(uint32_t addr, uint16_t value);
+
+/* Записать буфер. Для C031 длина дополняется до кратности 8 байтам
+ * значением 0xFF (double-word programming), адрес должен быть
+ * выровнен на 8 байт. */
+int flash_program_buffer_raw(uint32_t addr, const uint8_t *data, uint16_t len);
 
 /* Операции «верхнего уровня». В загрузчике они приостанавливают I2C,
  * в приложении — нет (запись выполняется до инициализации I2C). */
 int flash_erase_page(uint32_t addr);
-int flash_program_halfword(uint32_t addr, uint16_t value);
 
 #ifdef BOOT_BUILD
 /* Запись произвольного буфера (загрузчик: с паузой I2C). */

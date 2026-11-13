@@ -25,18 +25,28 @@ set(STM32F103_ASM_FLAGS
 set(STM32F103_LINK_FLAGS
     ${STM32F103_CPU_FLAGS}
     -Wl,--gc-sections
+    -Wl,--nmagic
     --specs=nano.specs
     --specs=nosys.specs
     -nostartfiles
 )
 
+# Значения, которые корневой CMakeLists.txt передаёт в подкаталоги.
+set(EC_MCU_DEFINE STM32F103xB)
+set(EC_C_FLAGS ${STM32F103_C_FLAGS})
+set(EC_ASM_FLAGS ${STM32F103_ASM_FLAGS})
+set(EC_LINK_FLAGS ${STM32F103_LINK_FLAGS})
+set(EC_HAL_DIR hal/f1)
+set(EC_PLATFORM_DIR platform/stm32f103)
+set(EC_SDK_TARGET STM32CubeF1::STM32CubeF1)
+
 # Применяет общие настройки MCU к цели.
-function(stm32f103_configure target)
-    target_compile_options(${target} PRIVATE ${STM32F103_C_FLAGS})
+function(ec_configure target)
+    target_compile_options(${target} PRIVATE ${EC_C_FLAGS})
     target_compile_definitions(${target} PRIVATE
-        STM32F103xB
+        ${EC_MCU_DEFINE}
         USE_FULL_LL_DRIVER
         FLASH_TOTAL_KB=${FLASH_TOTAL_KB}
     )
-    target_link_libraries(${target} PRIVATE STM32CubeF1::STM32CubeF1)
+    target_link_libraries(${target} PRIVATE ${EC_SDK_TARGET})
 endfunction()

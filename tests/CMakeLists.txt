@@ -39,11 +39,24 @@ target_include_directories(test_meta PRIVATE
 target_link_libraries(test_meta PRIVATE unity)
 add_test(NAME meta COMMAND test_meta)
 
+# --- Конечный автомат питания (чистая логика) ---
+add_executable(test_power_fsm
+    test_power_fsm.c
+    ${CMAKE_SOURCE_DIR}/common/power_fsm.c
+)
+target_include_directories(test_power_fsm PRIVATE
+    ${CMAKE_SOURCE_DIR}/common
+    ${CMAKE_SOURCE_DIR}/app/inc
+    ${CMAKE_SOURCE_DIR}/hal/include
+)
+target_link_libraries(test_power_fsm PRIVATE unity)
+add_test(NAME power_fsm COMMAND test_power_fsm)
+
 # `check` собирает тесты и запускает CTest (в отличие от встроенной
 # цели `test`, которая только запускает ctest и не собирает цели).
 add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
-    DEPENDS test_crc test_protocol test_meta
+    DEPENDS test_crc test_protocol test_meta test_power_fsm
     COMMENT "Сборка и запуск модульных тестов (host)"
     USES_TERMINAL
 )

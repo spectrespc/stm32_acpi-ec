@@ -8,7 +8,7 @@ on:
         required: true
         type: choice
         default: 'C8T6'
-        options: ['C8T6', 'CBT6']
+        options: ['C8T6', 'CBT6', 'C011x6', 'C031x6']
       flash_bootloader:
         description: 'Прошивать/восстанавливать загрузчик (ST-Link) [осторожно]'
         type: boolean
@@ -35,6 +35,7 @@ jobs:
           test -x "$BOOTLOADER_TOOL" || echo "bootloader_tool будет собран далее"
 
       - name: Проверка I2C-устройства (обязательно для OTA)
+        if: ${{ !startsWith(inputs.mcu, 'C0') }}
         run: |
           if ! test -c "$I2C_DEVICE"; then
             echo "ОШИБКА: I2C-устройство $I2C_DEVICE не найдено — OTA-прошивка невозможна"
@@ -57,8 +58,17 @@ jobs:
           cmake --build build_host --target bootloader_tool
           cmake --build build_host --target check
 
+      - name: Прошивка STM32C031 (только ST-Link, без I2C-мастера)
+        if: startsWith(inputs.mcu, 'C0')
+        run: |
+          if [ "${{ inputs.flash_bootloader }}" = "true" ]; then
+            cmake --build build --target flash-boot
+          fi
+          cmake --build build --target flash-app
+
       - name: Прошивка приложения (I2C OTA, retry до 3 раз)
         id: flash-app
+        if: ${{ !startsWith(inputs.mcu, 'C0') }}
         continue-on-error: true
         run: |
           for i in 1 2 3; do
@@ -74,7 +84,7 @@ jobs:
           exit 1
 
       - name: ST-Link fallback (аварийная прошивка)
-        if: steps.flash-app.outcome == 'failure'
+        if: ${{ !startsWith(inputs.mcu, 'C0') && steps.flash-app.outcome == 'failure' }}
         run: |
           if [ "${{ inputs.flash_bootloader }}" = "true" ]; then
             echo "=== Восстановление загрузчика и приложения через ST-Link ==="
@@ -89,5 +99,5 @@ jobs:
           fi
 
       - name: Верификация
-        if: success()
+        if: ${{ success() && !startsWith(inputs.mcu, 'C0') }}
         run: cmake --build build --target info-app

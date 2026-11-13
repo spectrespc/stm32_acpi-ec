@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        mcu: [C8T6, CBT6]
+        mcu: [C8T6, CBT6, C011x6, C031x6]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
@@ -73,7 +73,7 @@ jobs:
           body: |
             ## stm32_acpi-ec ${{ github.ref_name }}
 
-            Прошивки для **STM32F103C8T6** (64 KB) и **STM32F103CBT6** (128 KB).
+            Прошивки для **STM32F103C8T6** (64 KB), **STM32F103CBT6** (128 KB) и **STM32C011F6P6** (32 KB/6 KB) и **STM32C031F6P6** (32 KB/12 KB).
 
             Имена файлов содержат вариант MCU, например
             `bootloader_C8T6.elf`, `app_CBT6.bin`. В комплекте также

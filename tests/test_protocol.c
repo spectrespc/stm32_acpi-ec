@@ -1,7 +1,7 @@
 /* tests/test_protocol.c
  *
- * Проверка фрейминга протокола v2: разбор заголовка кадра и
- * little-endian упаковка/распаковка.
+ * Проверка фрейминга протокола v3: разбор заголовка кадра,
+ * little-endian упаковка/распаковка и кадры power-команд.
  */
 
 #include "unity.h"
@@ -62,6 +62,41 @@ static void test_parse_max_len_boundary(void)
     TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 4, NULL, NULL, NULL));
 }
 
+static void test_proto_version_v3(void)
+{
+    TEST_ASSERT_EQUAL_UINT16(3U, PROTO_VER);
+}
+
+static void test_parse_get_power_frame(void)
+{
+    const uint8_t buf[] = {0x01, 0x00, CMD_GET_POWER};
+    uint8_t cmd = 0;
+    uint16_t plen = 0;
+
+    TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 260, NULL, &cmd, &plen));
+    TEST_ASSERT_EQUAL_UINT16(CMD_GET_POWER, cmd);
+    TEST_ASSERT_EQUAL_UINT16(0U, plen);
+}
+
+static void test_parse_set_power_frame(void)
+{
+    const uint8_t buf[] = {0x03, 0x00, CMD_SET_POWER, HOST_STATE_AWAKE, POWER_ACK_REQUEST};
+    uint8_t cmd = 0;
+    uint16_t plen = 0;
+
+    TEST_ASSERT_TRUE(protocol_parse_request(buf, sizeof buf, 260, NULL, &cmd, &plen));
+    TEST_ASSERT_EQUAL_UINT16(CMD_SET_POWER, cmd);
+    TEST_ASSERT_EQUAL_UINT16(POWER_SET_PAYLOAD_LEN, plen);
+}
+
+static void test_power_payload_layout(void)
+{
+    TEST_ASSERT_EQUAL_UINT16(8U, POWER_PAYLOAD_LEN);
+    TEST_ASSERT_EQUAL_UINT32(0U, POWER_WAKE_NONE);
+    TEST_ASSERT_EQUAL_UINT32(4U, POWER_WAKE_RESET);
+    TEST_ASSERT_EQUAL_UINT32(4U, POWER_EVENT_DOUBLE);
+}
+
 static void test_parse_write_data_header(void)
 {
     /* WRITE_DATA: LEN = 1(cmd) + 4(offset) + 1(len) = 6 */
@@ -84,6 +119,10 @@ int main(void)
     RUN_TEST(test_parse_truncated_rejected);
     RUN_TEST(test_parse_max_len_rejected);
     RUN_TEST(test_parse_max_len_boundary);
+    RUN_TEST(test_proto_version_v3);
+    RUN_TEST(test_parse_get_power_frame);
+    RUN_TEST(test_parse_set_power_frame);
+    RUN_TEST(test_power_payload_layout);
     RUN_TEST(test_parse_write_data_header);
     return UNITY_END();
 }

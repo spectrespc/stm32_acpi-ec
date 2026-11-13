@@ -1,20 +1,22 @@
 /* app/src/main.c
  *
- * Основная прошивка контроллера батареи (один слот приложения).
+ * Основная прошивка EC (один слот приложения).
  *
  *   - слинкована на единственный адрес 0x08002000, релокация не нужна;
  *   - I2C slave на адресе 0x42;
  *   - эмуляция батареи 3S Li-ion со статическими данными;
  *   - подтверждение загрузки (снимает флаг PENDING);
  *   - команды входа в режим обновления (0x0E) и сброса (0x08);
- *   - мигание LED для индикации работы.
+ *   - FSM кнопки/питания (только на платформах с power_supported()).
  */
 
 #include "board.h"
 #include "battery.h"
+#include "bus_watchdog.h"
 #include "commands.h"
 #include "i2c.h"
 #include "meta.h"
+#include "power_task.h"
 #include "system.h"
 
 /* Начало секции .isr_vector из скрипта линковки = 0x08002000 */
@@ -36,6 +38,11 @@ int main(void)
     boot_confirm();
 
     i2c_init();
+    power_task_init();
+
+    bus_watchdog_init(millis());
+
+    bool power_managed = power_task_supported();
 
     uint32_t last_led = millis();
     uint32_t last_bat_update = millis();
@@ -51,11 +58,22 @@ int main(void)
 
         uint32_t now = millis();
 
-        /* Мигание LED раз в 500 мс (неблокирующим способом) */
-        if ((uint32_t)(now - last_led) >= 500U)
+        /* Страховка от исчезнувшего мастера: линия не должна остаться
+         * прижатой до перезагрузки EC. */
+        bus_watchdog_tick(now);
+
+        if (power_managed)
         {
-            last_led = now;
-            led_toggle();
+            power_task_tick();
+        }
+        else
+        {
+            /* F103: прежнее поведение — мигание раз в 500 мс. */
+            if ((uint32_t)(now - last_led) >= 500U)
+            {
+                last_led = now;
+                led_toggle();
+            }
         }
 
         /* Обновление данных батареи раз в 1 секунду */

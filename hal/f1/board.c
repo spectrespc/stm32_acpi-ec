@@ -45,10 +45,10 @@ static void clock_init_hsi(void)
 #ifdef BOOT_BUILD
 static void delay_init(void)
 {
-    SysTick_Config(8000000UL / 1000UL);
+    SysTick_Config(EC_SYSCLK_HZ / 1000UL);
 }
 
-static void delay_ms(uint32_t ms)
+void board_delay_ms(uint32_t ms)
 {
     uint32_t start = ms_ticks;
 
@@ -125,9 +125,9 @@ void led_blink(uint32_t count, uint32_t ms)
     for (uint32_t i = 0; i < count; i++)
     {
         led_on();
-        delay_ms(ms);
+        board_delay_ms(ms);
         led_off();
-        delay_ms(ms);
+        board_delay_ms(ms);
     }
 }
 #endif /* BOOT_BUILD */
@@ -135,6 +135,12 @@ void led_blink(uint32_t count, uint32_t ms)
 uint32_t millis(void)
 {
     return ms_ticks;
+}
+
+bool board_button_pressed(void)
+{
+    /* На F103-плате кнопки питания нет. */
+    return false;
 }
 
 void board_init(void)
@@ -151,8 +157,8 @@ void board_init(void)
 
 #ifdef BOOT_BUILD
     delay_init();
-    delay_ms(HOST_POWER_DELAY_MS);
+    board_delay_ms(HOST_POWER_DELAY_MS);
 #else
-    SysTick_Config(8000000UL / 1000UL);
+    SysTick_Config(EC_SYSCLK_HZ / 1000UL);
 #endif
 }

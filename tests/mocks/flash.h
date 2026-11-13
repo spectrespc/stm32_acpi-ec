@@ -10,10 +10,11 @@
 #include <stdint.h>
 
 void flash_read(uint32_t addr, void *dst, uint32_t len);
+int flash_program_buffer_raw(uint32_t addr, const uint8_t *data, uint16_t len);
+
 void flash_unlock(void);
 void flash_lock(void);
 int flash_erase_page_raw(uint32_t addr);
-int flash_program_halfword_raw(uint32_t addr, uint16_t value);
 
 /* --- только для тестов --- */
 void mock_flash_reset(void);                       /* заполнить 0xFF */

@@ -47,10 +47,8 @@ int flash_erase_page_raw(uint32_t addr)
     return 0;
 }
 
-int flash_program_halfword_raw(uint32_t addr, uint16_t value)
+int flash_program_buffer_raw(uint32_t addr, const uint8_t *data, uint16_t len)
 {
-    uint8_t *p = at(addr);
-    p[0] = (uint8_t)(value & 0xFFU);
-    p[1] = (uint8_t)(value >> 8);
+    memcpy(at(addr), data, len);
     return 0;
 }

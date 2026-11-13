@@ -1,15 +1,18 @@
 # app/CMakeLists.txt
 #
-# Образ приложения: 54/120 KB @ 0x08002000 (stm32f103_app.ld).
+# Образ приложения: 54/120/20 KB @ 0x08002000 (stm32f103_app.ld или
+# stm32c031_app.ld — выбирается MCU).
 
 add_executable(app.elf
     src/main.c
     src/battery.c
+    src/bus_watchdog.c
     src/commands.c
+    src/power_task.c
 )
 
-stm32f103_configure(app.elf)
-target_compile_definitions(app.elf PRIVATE APP_BUILD)
+ec_configure(app.elf)
+target_compile_definitions(app.elf PRIVATE APP_BUILD ${EC_DEBUG_DEFINE})
 
 target_include_directories(app.elf PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
@@ -17,14 +20,15 @@ target_include_directories(app.elf PRIVATE
 )
 
 target_link_libraries(app.elf PRIVATE
-    platform_stm32f103
+    platform
     hal_app
     common
 )
 
 target_link_options(app.elf PRIVATE
-    ${STM32F103_LINK_FLAGS}
+    ${EC_LINK_FLAGS}
     -T ${APP_LDSCRIPT}
+    ${EC_RAM_LINK_DEFS}
     -Wl,--defsym=FLASH_ORIGIN=${APP_FLASH_ORIGIN}
     -Wl,--defsym=FLASH_LENGTH=${APP_FLASH_LENGTH}
     -Wl,-Map=${CMAKE_BINARY_DIR}/app.map
@@ -54,10 +58,16 @@ add_custom_command(TARGET app.elf POST_BUILD
 # Прошивка
 # ============================================================================
 
-add_custom_target(flash-app
-    COMMAND ${OPENOCD_EXECUTABLE}
+if(MCU MATCHES "^C0")
+    set(FLASH_OPENOCD_ARGS -f ${CMAKE_SOURCE_DIR}/scripts/openocd_c0.cfg)
+else()
+    set(FLASH_OPENOCD_ARGS
         -f ${OPENOCD_SCRIPTS}/interface/stlink.cfg
-        -f ${OPENOCD_SCRIPTS}/target/stm32f1x.cfg
+        -f ${OPENOCD_SCRIPTS}/target/stm32f1x.cfg)
+endif()
+
+add_custom_target(flash-app
+    COMMAND ${OPENOCD_EXECUTABLE} ${FLASH_OPENOCD_ARGS}
         -c "program $<TARGET_FILE:app.elf> verify reset exit"
     DEPENDS app.elf
     COMMENT "Прошивка приложения через ST-Link v2 (OpenOCD)"

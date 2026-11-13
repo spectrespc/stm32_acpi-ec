@@ -6,7 +6,10 @@ MEMORY
      * под флаг входа в режим обновления (0x20004FFC) и НЕ входят
      * в стек — см. также скрипт линковки загрузчика. */
     RAM   (rwx) : ORIGIN = 0x20000000, LENGTH = 20K - 16
+    ECFLAG (rw)  : ORIGIN = 0x20004FFC, LENGTH = 4
 }
+
+PROVIDE(__ec_update_flag = ORIGIN(ECFLAG));
 
 _estack = ORIGIN(RAM) + LENGTH(RAM);
 

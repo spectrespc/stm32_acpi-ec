@@ -1,7 +1,7 @@
 # CMakeLists.txt — точка входа проекта stm32_acpi_ec
 #
 # Кросс-сборка прошивок (bootloader + application):
-#   cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake [-DMCU=C8T6|CBT6]
+#   cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake [-DMCU=C8T6|CBT6|C011x6|C031x6]
 #   cmake --build build
 #
 # Нативная сборка хостовых утилит и тестов:
@@ -13,27 +13,64 @@ cmake_minimum_required(VERSION 3.20)
 project(stm32_acpi_ec LANGUAGES C ASM)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(stm32f103)
 
 # ============================================================================
 # Выбор микроконтроллера
 # ============================================================================
 
-set(MCU "C8T6" CACHE STRING "Вариант MCU: C8T6 (64 KB) или CBT6 (128 KB)")
-set_property(CACHE MCU PROPERTY STRINGS C8T6 CBT6)
+set(MCU "C8T6" CACHE STRING "Вариант MCU: C8T6 (64 KB), CBT6 (128 KB), C011x6 (32 KB/6 KB) или C031x6 (32 KB/12 KB)")
+set_property(CACHE MCU PROPERTY STRINGS C8T6 CBT6 C011x6 C031x6)
+
+# Отладочный слой I2C (счётчики, 0x28/0x29). Выключен в проде: команды
+# отвечают 0xFF, лишние счётчики не занимают RAM.
+option(EC_DEBUG_BUILD "Включить отладочные команды I2C 0x28/0x29 и счётчики" OFF)
+if(EC_DEBUG_BUILD)
+    set(EC_DEBUG_DEFINE DEBUG_BUILD)
+endif()
 
 if(MCU STREQUAL "C8T6")
     set(FLASH_TOTAL_KB 64)
     set(APP_FLASH_LENGTH 54K)
+    include(stm32f103)
 elseif(MCU STREQUAL "CBT6")
     set(FLASH_TOTAL_KB 128)
     set(APP_FLASH_LENGTH 120K)
+    include(stm32f103)
+elseif(MCU STREQUAL "C031x6")
+    set(FLASH_TOTAL_KB 32)
+    set(APP_FLASH_LENGTH 20K)
+    set(EC_MCU_DEFINE STM32C031xx)
+    set(EC_RAM_SIZE_KB 12)
+    set(EC_RAM_LENGTH 12272)
+    set(EC_FLAG_ADDR 0x20002FFC)
+    include(stm32c0)
+elseif(MCU STREQUAL "C011x6")
+    set(FLASH_TOTAL_KB 32)
+    set(APP_FLASH_LENGTH 20K)
+    set(EC_MCU_DEFINE STM32C011xx)
+    set(EC_RAM_SIZE_KB 6)
+    set(EC_RAM_LENGTH 6128)
+    set(EC_FLAG_ADDR 0x200017FC)
+    include(stm32c0)
 else()
-    message(FATAL_ERROR "Неизвестный MCU '${MCU}'. Используйте C8T6 или CBT6.")
+    message(FATAL_ERROR "Неизвестный MCU '${MCU}'. Используйте C8T6, CBT6, C011x6 или C031x6.")
 endif()
 
 set(BOOT_FLASH_LENGTH 8K)
 set(APP_FLASH_ORIGIN 0x08002000)
+
+set(BOOT_LDSCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/platform/stm32f103/stm32f103_boot.ld")
+set(APP_LDSCRIPT  "${CMAKE_CURRENT_SOURCE_DIR}/platform/stm32f103/stm32f103_app.ld")
+
+if(MCU MATCHES "^C0")
+    set(BOOT_LDSCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/platform/stm32c0/stm32c0_boot.ld")
+    set(APP_LDSCRIPT  "${CMAKE_CURRENT_SOURCE_DIR}/platform/stm32c0/stm32c0_app.ld")
+    set(EC_RAM_LINK_DEFS
+        -Wl,--defsym=RAM_LENGTH=${EC_RAM_LENGTH}
+        -Wl,--defsym=ECFLAG_ADDR=${EC_FLAG_ADDR})
+else()
+    set(EC_RAM_LINK_DEFS "")
+endif()
 
 # ============================================================================
 # Версия прошивки из VCS (git describe) с запасным значением 1.0.0
@@ -83,13 +120,18 @@ include_directories("${CMAKE_BINARY_DIR}/generated")
 
 message(STATUS "MCU: ${MCU} (FLASH_TOTAL_KB=${FLASH_TOTAL_KB}, app ${APP_FLASH_LENGTH})")
 message(STATUS "FW_VERSION: ${FW_VERSION_STRING} (0x${FW_VERSION_HEX})")
+message(STATUS "I2C debug layer: ${EC_DEBUG_BUILD}")
 
 # ============================================================================
 # Кросс-сборка: прошивки. Нативная: tools + tests.
 # ============================================================================
 
 if(CMAKE_CROSSCOMPILING)
-    find_package(STM32CubeF1 REQUIRED)
+    if(MCU MATCHES "^C0")
+        find_package(STM32CubeC0 REQUIRED)
+    else()
+        find_package(STM32CubeF1 REQUIRED)
+    endif()
 
     # Внешние инструменты и параметры прошивки
     set(OPENOCD_EXECUTABLE "openocd" CACHE FILEPATH "Исполняемый файл OpenOCD")
@@ -111,10 +153,8 @@ if(CMAKE_CROSSCOMPILING)
         set(I2C_DEVICE "/dev/i2c-7" CACHE STRING "I2C-устройство хоста для bootloader_tool")
     endif()
 
-    set(BOOT_LDSCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/platform/stm32f103/stm32f103_boot.ld")
-    set(APP_LDSCRIPT  "${CMAKE_CURRENT_SOURCE_DIR}/platform/stm32f103/stm32f103_app.ld")
 
-    add_subdirectory(platform/stm32f103)
+    add_subdirectory(${EC_PLATFORM_DIR})
     add_subdirectory(hal)
     add_subdirectory(common)
     add_subdirectory(boot)
@@ -125,17 +165,21 @@ else()
     enable_testing()
     add_subdirectory(tests)
 
+
     # ========================================================================
     # Код-стайл и статический анализ (только нативная сборка).
     # Цели не создаются, если нужный инструмент не найден в PATH.
     # ========================================================================
+
 
     find_program(CLANG_FORMAT_EXECUTABLE clang-format)
     if(CLANG_FORMAT_EXECUTABLE)
         file(GLOB_RECURSE ALL_SOURCE_FILES
             ${CMAKE_SOURCE_DIR}/boot/src/*.c   ${CMAKE_SOURCE_DIR}/boot/inc/*.h
             ${CMAKE_SOURCE_DIR}/app/src/*.c    ${CMAKE_SOURCE_DIR}/app/inc/*.h
-            ${CMAKE_SOURCE_DIR}/hal/*.c        ${CMAKE_SOURCE_DIR}/hal/*.h
+            ${CMAKE_SOURCE_DIR}/hal/include/*.c ${CMAKE_SOURCE_DIR}/hal/include/*.h
+            ${CMAKE_SOURCE_DIR}/hal/f1/*.c      ${CMAKE_SOURCE_DIR}/hal/f1/*.h
+            ${CMAKE_SOURCE_DIR}/hal/c0/*.c      ${CMAKE_SOURCE_DIR}/hal/c0/*.h
             ${CMAKE_SOURCE_DIR}/common/*.c     ${CMAKE_SOURCE_DIR}/common/*.h
             ${CMAKE_SOURCE_DIR}/tools/*.c      ${CMAKE_SOURCE_DIR}/tools/*.h
             ${CMAKE_SOURCE_DIR}/tests/*.c      ${CMAKE_SOURCE_DIR}/tests/*.h
@@ -163,23 +207,25 @@ else()
             --error-exitcode=1
             --inline-suppr
             --suppress=unusedFunction
+            --suppress=normalCheckLevelMaxBranches
             --suppress=missingIncludeSystem
             --std=c11
             --platform=unix32
             -I ${CMAKE_SOURCE_DIR}/common
-            -I ${CMAKE_SOURCE_DIR}/hal
+            -I ${CMAKE_SOURCE_DIR}/hal/include
+            -I ${CMAKE_SOURCE_DIR}/${EC_HAL_DIR}
             -I ${CMAKE_SOURCE_DIR}/boot/inc
             -I ${CMAKE_SOURCE_DIR}/app/inc
-            -DSTM32F103xB -DFLASH_TOTAL_KB=${FLASH_TOTAL_KB}
+            -D${EC_MCU_DEFINE} -DFLASH_TOTAL_KB=${FLASH_TOTAL_KB}
         )
         add_custom_target(cppcheck
             COMMAND ${CPPCHECK_EXECUTABLE} ${CPPCHECK_ARGS} -DBOOT_BUILD
                 ${CMAKE_SOURCE_DIR}/boot/src
-                ${CMAKE_SOURCE_DIR}/hal
+                ${CMAKE_SOURCE_DIR}/${EC_HAL_DIR}
                 ${CMAKE_SOURCE_DIR}/common
             COMMAND ${CPPCHECK_EXECUTABLE} ${CPPCHECK_ARGS}
                 ${CMAKE_SOURCE_DIR}/app/src
-                ${CMAKE_SOURCE_DIR}/hal
+                ${CMAKE_SOURCE_DIR}/${EC_HAL_DIR}
                 ${CMAKE_SOURCE_DIR}/common
             COMMENT "Статический анализ (cppcheck: boot + app)"
             USES_TERMINAL

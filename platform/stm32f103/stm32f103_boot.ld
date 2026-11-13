@@ -10,7 +10,10 @@ MEMORY
      * ни в стек, ни в кучу. Иначе первый же PUSH при старте
      * затирал бы магическое число, записанное прошивкой. */
     RAM   (rwx) : ORIGIN = 0x20000000, LENGTH = 20K - 16
+    ECFLAG (rw)  : ORIGIN = 0x20004FFC, LENGTH = 4
 }
+
+PROVIDE(__ec_update_flag = ORIGIN(ECFLAG));
 
 _estack = ORIGIN(RAM) + LENGTH(RAM);
 

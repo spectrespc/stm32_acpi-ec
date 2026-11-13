@@ -1,6 +1,8 @@
-/* hal/flash.c
+/* hal/f1/flash.c
  *
- * Объединённая реализация для загрузчика и приложения.
+ * STM32F103 medium density: страница 1 KB, программирование
+ * полусловами по 2 байта.
+ *
  * Ядро (flash_*_raw) не трогает блокировку Flash и I2C; обёртки
  * flash_erase_page()/flash_program_buffer() в загрузчике (BOOT_BUILD)
  * приостанавливают обслуживание I2C на время операции.
@@ -57,32 +59,41 @@ int flash_erase_page_raw(uint32_t addr)
     return 0;
 }
 
-int flash_program_halfword_raw(uint32_t addr, uint16_t value)
+int flash_program_buffer_raw(uint32_t addr, const uint8_t *data, uint16_t len)
 {
-    flash_wait_busy();
-
-    FLASH->CR |= FLASH_CR_PG;
-
-    *(__IO uint16_t *)addr = value;
-
-    flash_wait_busy();
-
-    FLASH->CR &= ~FLASH_CR_PG;
-
-    /* cppcheck-suppress knownConditionTrueFalse
-     * Чтение регистра Flash после программирования — аппаратное
-     * значение, cppcheck не учитывает изменение памяти. */
-    if (*(__IO uint16_t *)addr != value)
+    for (uint16_t i = 0; i < len; i += 2U)
     {
-        return -1;
+        flash_wait_busy();
+
+        uint16_t hw = (uint16_t)data[i];
+
+        if ((uint16_t)(i + 1U) < len)
+        {
+            hw |= (uint16_t)((uint16_t)data[i + 1U] << 8);
+        }
+        else
+        {
+            hw |= 0xFF00U;
+        }
+
+        FLASH->CR |= FLASH_CR_PG;
+
+        *(__IO uint16_t *)(addr + i) = hw;
+
+        flash_wait_busy();
+
+        FLASH->CR &= ~FLASH_CR_PG;
+
+        /* cppcheck-suppress knownConditionTrueFalse
+         * Чтение регистра Flash после программирования — аппаратное
+         * значение, cppcheck не учитывает изменение памяти. */
+        if (*(__IO uint16_t *)(addr + i) != hw)
+        {
+            return -1;
+        }
     }
 
     return 0;
-}
-
-int flash_program_halfword(uint32_t addr, uint16_t value)
-{
-    return flash_program_halfword_raw(addr, value);
 }
 
 int flash_erase_page(uint32_t addr)
@@ -106,29 +117,7 @@ int flash_program_buffer(uint32_t addr, const uint8_t *data, uint16_t len)
 
     flash_unlock();
 
-    int rc = 0;
-
-    for (uint16_t i = 0; i < len;)
-    {
-        uint16_t hw;
-
-        if ((i + 1U) < len)
-        {
-            hw = (uint16_t)data[i] | ((uint16_t)data[i + 1U] << 8);
-        }
-        else
-        {
-            hw = (uint16_t)data[i] | 0xFF00U;
-        }
-
-        if (flash_program_halfword_raw(addr + i, hw) != 0)
-        {
-            rc = -1;
-            break;
-        }
-
-        i += 2U;
-    }
+    int rc = flash_program_buffer_raw(addr, data, len);
 
     flash_lock();
 

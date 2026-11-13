@@ -28,12 +28,18 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y cppcheck
       - run: cmake -B build_host
       - run: cmake --build build_host --target cppcheck
+      # Отдельный прогон для C031: другой набор исходников hal/c0 и
+      # другой define устройства (STM32C031xx).
+      - run: cmake -B build_host_c0 -DMCU=C031x6
+      - run: cmake --build build_host_c0 --target cppcheck
+      - run: cmake -B build_host_c011 -DMCU=C011x6
+      - run: cmake --build build_host_c011 --target cppcheck
 
   build-and-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        mcu: [C8T6, CBT6]
+        mcu: [C8T6, CBT6, C011x6, C031x6]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
