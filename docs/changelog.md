@@ -74,8 +74,10 @@
   hold-scl: `timeout_fires=4`, `bus_hang_events=0`, SCL отпускается
   аппаратным `TIMEOUTR` (~10 мс), следующий `0x28` и `oko-ec info`
   проходят; `SCL hold by slave` за прогон — 0. Stop→wake после 5 с
-  тишины работает (`I2C1SEL=HSIKER`). OTA с новым загрузчиком
-  фиксирует метаданные (`img_size=9172`, commit OK). Soak: 40 ребутов,
+  тишины работает (`I2C1SEL=HSIKER`). OTA пишет образ и проходит
+  VERIFY, но `COMMIT` метаданных через `oko-ec` не применяется
+  (KI-062); ручной `BEGIN`+`VERIFY`+`COMMIT 0x05` записывает мета
+  (seq15). Soak: 40 ребутов,
   из них 30 `read-window` со сдвигом 0…150 мс, 5 `detect` — 0 сообщений
   `SCL hold by slave`, 0 `timeout` в dmesg. Полные 300 ребутов не
   прогонялись (время); отчёты — `output/bench/ec_bus_soak-*.json`.
