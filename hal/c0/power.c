@@ -216,7 +216,8 @@ void power_backup_write32(uint8_t index, uint32_t value)
 
     volatile uint32_t *bkp = &PWR->BKP0R;
 
-    bkp[index] = value;
+    /* BKP[15:0]: старшие 16 бит аппаратно не реализованы. */
+    bkp[index] = value & 0xFFFFU;
 }
 
 uint8_t power_reset_cause(void)

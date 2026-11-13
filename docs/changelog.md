@@ -5,7 +5,7 @@
 ### Added
 
 - **Освобождение прижатой SCL по таймеру (F1).** Аппаратный SCL-low
-  timeout `I2C_TIMEOUTR` (~15 мс, `TIMEOUTA=350`, `TIDLE=0`) в
+  timeout `I2C_TIMEOUTR` (~10 мс, `TIMEOUTA=233`, `TIDLE=0`) в
   `i2c_hw_config()`: при `I2C_ISR_TIMEOUT` ISR сбрасывает `rx_count`/
   `rx_frame_done` и делает `PE=0/1`, отпуская линию. Страховка —
   программный bus-watchdog (`app/src/bus_watchdog.c`,
@@ -15,7 +15,8 @@
 - **Отладочный слой I2C (`-DEC_DEBUG_BUILD=ON`).** Счётчики ADDR/TXIS/
   STOP/NACK/error/TIMEOUT, `bus_hang_ms_max`, `irq_masked_us_max`,
   `paused_ms_max`, снимки `ISR`/`CR1` на ADDR(read) и зависании; зеркало
-  в `PWR->BKP2R/BKP3R` (переживает `NRST`). Команды `0x28 GET_DEBUG`
+  в `PWR->BKP2R/BKP3R` (16-битные регистры C0; упакованы ISR/CR1 и
+  счётчики, переживают `NRST`). Команды `0x28 GET_DEBUG`
   (60 байт) и `0x29 DEBUG_HOLD_SCL` (эталонное удержание SCL); в обычной
   сборке отвечают `0xFF`.
 - **Хостовый ретрай записи:** `i2c_transport_write_read_timed()` повторяет
@@ -68,6 +69,16 @@
 - Параметры прошивки `BOOTLOADER_TOOL` / `I2C_DEVICE` читаются из env.
 
 ### Fixed
+
+- **Проверено на стенде 2026-11-13 (C011, debug 9172 Б).** `0x29`
+  hold-scl: `timeout_fires=4`, `bus_hang_events=0`, SCL отпускается
+  аппаратным `TIMEOUTR` (~10 мс), следующий `0x28` и `oko-ec info`
+  проходят; `SCL hold by slave` за прогон — 0. Stop→wake после 5 с
+  тишины работает (`I2C1SEL=HSIKER`). OTA с новым загрузчиком
+  фиксирует метаданные (`img_size=9172`, commit OK). Soak: 40 ребутов,
+  из них 30 `read-window` со сдвигом 0…150 мс, 5 `detect` — 0 сообщений
+  `SCL hold by slave`, 0 `timeout` в dmesg. Полные 300 ребутов не
+  прогонялись (время); отчёты — `output/bench/ec_bus_soak-*.json`.
 
 - **I2C1 тактировался от PCLK, а не от HSIKER.** `RCC->CCIPR.I2C1SEL=00`
   (PCLK) в Stop не тактирует периферию, поэтому `WUPEN` не будил ядро по

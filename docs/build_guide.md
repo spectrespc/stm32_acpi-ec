@@ -65,7 +65,7 @@ cmake -B build-c031 -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake -DMCU=C031x
 ```
 
 Фактические размеры (gcc 14.2.1, обе C0-цели): `bootloader.bin` 4 232 Б,
-`app.bin` 8 276 Б (debug-сборка `-DEC_DEBUG_BUILD=ON` — 9 112 Б); gate —
+`app.bin` 8 276 Б (debug-сборка `-DEC_DEBUG_BUILD=ON` — 9 172 Б); gate —
 8 КиБ / 20 КиБ. Прямая прошивка `flash-app`
 программирует только приложение; для запуска нужны валидные метаданные
 (их пишет I2C OTA или `bootloader_tool`). Диагностическая сборка

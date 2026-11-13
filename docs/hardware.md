@@ -75,7 +75,7 @@ LED питаются от этого же рейла.
 - **WUPEN включать только перед `WFI`**: на C011 в рабочем режиме он
   прижимает SCL к нулю и убивает шину (проверено).
 - Освобождение прижатой линии: аппаратный `TIMEOUTR` (SCL-low timeout
-  ~15 мс, `TIMOUTEN=1`, `TIDLE=0`) и программный bus-watchdog
+  ~10 мс, `TIMOUTEN=1`, `TIDLE=0`) и программный bus-watchdog
   (`POWER_BUS_HANG_MS`, 15 мс) переконфигурируют I2C (`PE=0/1`) и
   отпускают SCL. Оба порога ниже таймаута `rk3x-i2c` (~20–30 мс).
 - `i2c_pause()` выключает `PE` и на время стирания/записи Flash; после
@@ -138,7 +138,7 @@ LED питаются от этого же рейла.
 - ST-Link v2 (SWD) + **OpenOCD из git master**: в OpenOCD 0.12 из Debian нет
   `tcl/target/stm32c0x.cfg`. Конфигурация — `scripts/openocd_c0.cfg`.
 - `arm-none-eabi-gcc` 14.2.1 (Debian 13, newlib) — сборка проверена;
-  образы C011/C031: boot 4232 Б, app 8276 Б (debug 9112 Б).
+  образы C011/C031: boot 4232 Б, app 8276 Б (debug 9172 Б).
 - Фактический стенд: `st-info --probe` → `STM32C011xx`, flash 32768,
   pagesize 2048, **sram 6144**; `MCU=C011x6`. Для C031F6 — `MCU=C031x6`
   (SRAM 12 КиБ, `_estack 0x20002FF0`).

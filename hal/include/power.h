@@ -58,8 +58,9 @@ void power_set_host_wake(bool assert_low);
 void power_pulse_host_wake(void);
 
 /* Backup-регистры (PWR->BKP0R..). POWER_BKP_NONE — нет такого регистра.
- * 32-битные функции нужны форензике I2C (BKP2R/BKP3R): backup-домен
- * переживает NRST, поэтому состояние шины видно после сброса. */
+ * На STM32C0 регистры 16-битные (RM0490: BKP[15:0]), поэтому 32-битные
+ * функции пишут/читают только младшие 16 бит. Форензика I2C использует
+ * BKP2R/BKP3R: backup-домен переживает NRST. */
 uint8_t power_backup_read(uint8_t index);
 void power_backup_write(uint8_t index, uint8_t value);
 uint32_t power_backup_read32(uint8_t index);

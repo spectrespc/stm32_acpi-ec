@@ -36,12 +36,11 @@
 #define I2C_TIMINGR_400K 0x00F21C3EU
 
 /* SCL-low timeout: tTIMEOUT = (TIMEOUTA + 1) * 2048 * tI2CCLK.
- * При I2CCLK = 48 МГц и TIMEOUTA = 350: 351 * 2048 / 48e6 = 14.98 мс.
- * Порог выбран ниже типичного таймаута хоста (rk3x-i2c, ~20-30 мс),
- * чтобы EC отпускал линию раньше, чем мастер объявит ошибку.
- * TIDLE = 0 — детектируется именно низкий уровень SCL. */
-#define I2C_TIMEOUTR_SCL_LOW_15MS                                                                  \
-    (((uint32_t)350U << I2C_TIMEOUTR_TIMEOUTA_Pos) | I2C_TIMEOUTR_TIMOUTEN)
+ * При I2CCLK = 48 МГц и TIMEOUTA = 233: 234 * 2048 / 48e6 = 9.98 мс.
+ * Порог ниже программного watchdog (15 мс) и таймаута хоста
+ * (rk3x-i2c, ~20-30 мс). TIDLE = 0 — детектируется низкий SCL. */
+#define I2C_TIMEOUTR_SCL_LOW_10MS                                                                  \
+    (((uint32_t)233U << I2C_TIMEOUTR_TIMEOUTA_Pos) | I2C_TIMEOUTR_TIMOUTEN)
 
 #define I2C_AF_I2C1 6U
 
@@ -114,7 +113,7 @@ static void i2c_config_regs(void)
 
     /* TIMEOUTA/TIDLE можно менять только при TIMOUTEN=0. */
     I2C1->TIMEOUTR = 0;
-    I2C1->TIMEOUTR = I2C_TIMEOUTR_SCL_LOW_15MS;
+    I2C1->TIMEOUTR = I2C_TIMEOUTR_SCL_LOW_10MS;
 
     I2C1->OAR1 = ((uint32_t)I2C_ADDR7 << 1) | I2C_OAR1_OA1EN;
 
@@ -424,34 +423,56 @@ static uint32_t debug_saturate(uint32_t value, uint32_t limit)
     return (value > limit) ? limit : value;
 }
 
+static uint16_t debug_pack_state(uint32_t isr, uint32_t cr1)
+{
+    /* BKP0R..BKP3R на STM32C0 — 16-битные (RM0490: BKP[15:0]),
+     * поэтому ISR и CR1 упакованы в один регистр. */
+    uint16_t v = 0;
+
+    v |= (isr & I2C_ISR_TXE) ? 1U << 0U : 0U;
+    v |= (isr & I2C_ISR_TXIS) ? 1U << 1U : 0U;
+    v |= (isr & I2C_ISR_RXNE) ? 1U << 2U : 0U;
+    v |= (isr & I2C_ISR_ADDR) ? 1U << 3U : 0U;
+    v |= (isr & I2C_ISR_NACKF) ? 1U << 4U : 0U;
+    v |= (isr & I2C_ISR_STOPF) ? 1U << 5U : 0U;
+    v |= (isr & I2C_ISR_BERR) ? 1U << 6U : 0U;
+    v |= (isr & I2C_ISR_ARLO) ? 1U << 7U : 0U;
+    v |= (isr & I2C_ISR_OVR) ? 1U << 8U : 0U;
+    v |= (isr & I2C_ISR_TIMEOUT) ? 1U << 9U : 0U;
+    v |= (isr & I2C_ISR_BUSY) ? 1U << 10U : 0U;
+    v |= (isr & I2C_ISR_DIR) ? 1U << 11U : 0U;
+    v |= (cr1 & I2C_CR1_PE) ? 1U << 12U : 0U;
+    v |= (cr1 & I2C_CR1_TXIE) ? 1U << 13U : 0U;
+    v |= (cr1 & I2C_CR1_WUPEN) ? 1U << 14U : 0U;
+    v |= 1U << 15U; /* зеркало валидно */
+
+    return v;
+}
+
 static void debug_mirror_backup(uint32_t isr, uint32_t cr1)
 {
-    power_backup_write32(I2C_DEBUG_BKP_STATE_INDEX, (isr & 0xFFFFU) | ((cr1 & 0xFFFFU) << 16U));
+    power_backup_write32(I2C_DEBUG_BKP_STATE_INDEX, debug_pack_state(isr, cr1));
 
-    uint32_t packed = debug_saturate(dbg_i2c.addr_events, 0xFU) |
-                      (debug_saturate(dbg_i2c.read_addr_events, 0xFU) << 4U) |
-                      (debug_saturate(dbg_i2c.txis_events, 0xFU) << 8U) |
-                      (debug_saturate(dbg_i2c.bus_hang_events, 0xFU) << 12U) |
-                      (debug_saturate(dbg_i2c.timeout_fires, 0xFU) << 16U) |
-                      (debug_saturate(dbg_i2c.nack_fires, 0xFU) << 20U);
+    uint16_t packed = (uint16_t)debug_saturate(dbg_i2c.addr_events, 0xFU) |
+                      (uint16_t)(debug_saturate(dbg_i2c.read_addr_events, 0xFU) << 4U) |
+                      (uint16_t)(debug_saturate(dbg_i2c.bus_hang_events, 0xFU) << 8U);
+
+    if (dbg_i2c.timeout_fires != 0U)
+    {
+        packed |= 1U << 12U;
+    }
 
     if (dbg_i2c.hold_scl != 0U)
     {
-        packed |= 1U << 24U;
-    }
-
-    if ((cr1 & I2C_CR1_PE) != 0U)
-    {
-        packed |= 1U << 25U;
+        packed |= 1U << 13U;
     }
 
     if (s_i2c_paused)
     {
-        packed |= 1U << 26U;
+        packed |= 1U << 14U;
     }
 
-    packed |= 1U << 27U; /* флаг «зеркало валидно» */
-    packed |= 0xAU << 28U;
+    packed |= 1U << 15U; /* зеркало валидно */
 
     power_backup_write32(I2C_DEBUG_BKP_FLAGS_INDEX, packed);
 }
